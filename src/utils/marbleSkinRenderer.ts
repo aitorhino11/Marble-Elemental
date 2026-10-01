@@ -199,6 +199,11 @@ export function drawMarbleSkin(
     drawGoldenCrown(ctx, radius, time);
   }
 
+  // 11. Custom Gear for Legend Fisherman (Hat, Curved Rod, Reel & Hook)
+  if (powerId === 'legend-fisherman') {
+    drawFishermanGear(ctx, radius, angle, time);
+  }
+
   ctx.restore();
 }
 
@@ -402,6 +407,32 @@ function drawElementalTexture(
     }
 
     default: {
+      if (powerId === 'legend-fisherman') {
+        // Oceanic ripples & golden koi scales
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.7)';
+        ctx.lineWidth = 1.8;
+        // Water ripples
+        for (let rip = 0; rip < 3; rip++) {
+          const ripY = -r * 0.3 + rip * r * 0.3;
+          ctx.beginPath();
+          ctx.moveTo(-r * 0.6, ripY);
+          ctx.quadraticCurveTo(0, ripY - 6, r * 0.6, ripY);
+          ctx.stroke();
+        }
+        // Tiny golden koi fish emblem
+        ctx.fillStyle = '#f59e0b';
+        ctx.beginPath();
+        ctx.ellipse(0, r * 0.25, 7, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(6, r * 0.25);
+        ctx.lineTo(12, r * 0.25 - 4);
+        ctx.lineTo(12, r * 0.25 + 4);
+        ctx.closePath();
+        ctx.fill();
+        break;
+      }
+
       // Magic / Chaos / Meme: Radiant star crest
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
       ctx.lineWidth = 2;
@@ -755,4 +786,103 @@ function darkenColor(hex: string, factor: number = 0.5): string {
   const dg = Math.floor(g * factor);
   const db = Math.floor(b * factor);
   return `rgb(${dr}, ${dg}, ${db})`;
+}
+
+/**
+ * Draws custom 3D Fishing Rod, Reel, Fishing Line with curved Hook, and Fisherman Hat!
+ */
+function drawFishermanGear(
+  ctx: CanvasRenderingContext2D,
+  r: number,
+  angle: number,
+  time: number
+) {
+  ctx.save();
+
+  // 1. Fisherman Bucket Hat on top
+  ctx.save();
+  ctx.translate(0, -r * 0.85);
+  // Hat brim
+  ctx.fillStyle = '#0f766e'; // teal green fisherman hat
+  ctx.beginPath();
+  ctx.ellipse(0, 0, r * 0.88, r * 0.26, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#134e4a';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Hat crown
+  ctx.fillStyle = '#14b8a6';
+  ctx.beginPath();
+  ctx.moveTo(-r * 0.52, 0);
+  ctx.lineTo(-r * 0.42, -r * 0.45);
+  ctx.lineTo(r * 0.42, -r * 0.45);
+  ctx.lineTo(r * 0.52, 0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Hat lure / feather
+  ctx.fillStyle = '#f59e0b';
+  ctx.beginPath();
+  ctx.arc(r * 0.32, -r * 0.25, 3.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // 2. Realistic curved Fishing Rod with Reel & Line
+  ctx.save();
+  // Rod angle leans dynamically
+  const rodAngle = -Math.PI / 4 + Math.sin(time * 3) * 0.1;
+  ctx.rotate(rodAngle);
+
+  // Rod pole (flexible carbon/bamboo)
+  ctx.strokeStyle = '#b45309';
+  ctx.lineWidth = 3.5;
+  ctx.beginPath();
+  ctx.moveTo(r * 0.45, r * 0.2);
+  ctx.quadraticCurveTo(r * 0.75, -r * 0.5, r * 1.35, -r * 1.25);
+  ctx.stroke();
+
+  const tipX = r * 1.35;
+  const tipY = -r * 1.25;
+
+  // Spinning Reel
+  ctx.fillStyle = '#64748b';
+  ctx.beginPath();
+  ctx.arc(r * 0.52, r * 0.12, 5.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#94a3b8';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Fishing line (monofilament) dangling from rod tip
+  const lineHang = Math.sin(time * 4) * 6;
+  const hookX = tipX + 8 + lineHang;
+  const hookY = tipY + 36;
+
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(tipX, tipY);
+  ctx.quadraticCurveTo(tipX + 4, tipY + 18, hookX, hookY);
+  ctx.stroke();
+
+  // Shiny Metallic Curved Hook
+  ctx.strokeStyle = '#e2e8f0';
+  ctx.lineWidth = 2.2;
+  ctx.beginPath();
+  ctx.moveTo(hookX, hookY);
+  ctx.lineTo(hookX, hookY + 8);
+  ctx.arc(hookX - 4, hookY + 8, 4, 0, Math.PI);
+  ctx.lineTo(hookX - 4, hookY + 4);
+  ctx.stroke();
+
+  // Little shiny fish lure
+  ctx.fillStyle = '#38bdf8';
+  ctx.beginPath();
+  ctx.ellipse(hookX - 4, hookY + 12, 4, 2.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+  ctx.restore();
 }

@@ -11,6 +11,8 @@ import { PowersMatrixView } from './components/PowersMatrixView';
 import { GachaHatchingToy } from './components/GachaHatchingToy';
 import { ProgressionCalculator } from './components/ProgressionCalculator';
 import { ArenaEditorPreview } from './components/ArenaEditorPreview';
+import { FusionMenuView } from './components/FusionMenuView';
+import { CreatorCodeModal } from './components/CreatorCodeModal';
 import { TikTokClipperModal } from './components/TikTokClipperModal';
 import { SurrenderConfirmModal } from './components/SurrenderConfirmModal';
 import { SupportedLanguage, TRANSLATIONS } from './i18n/translations';
@@ -36,10 +38,12 @@ import {
   Egg,
   Lock,
   AlertTriangle,
-  ArrowLeft
+  ArrowLeft,
+  Layers,
+  Gift
 } from 'lucide-react';
 
-type GameScreen = 'menu' | 'selection' | 'competitive' | 'battle' | 'gdd' | 'powers' | 'gacha' | 'progression' | 'editor';
+type GameScreen = 'menu' | 'selection' | 'competitive' | 'battle' | 'gdd' | 'powers' | 'gacha' | 'fusion' | 'progression' | 'editor';
 
 export default function App() {
   // Screen state
@@ -85,6 +89,13 @@ export default function App() {
 
   // TikTok Clipper state
   const [isClipperOpen, setIsClipperOpen] = useState<boolean>(false);
+
+  // Creator Code state
+  const [isCreatorCodeOpen, setIsCreatorCodeOpen] = useState<boolean>(false);
+
+  const readyToFuseCount = profile.unlockedMarbleIds.filter(
+    (id) => (profile.marbleDuplicates?.[id] || 0) >= 1
+  ).length;
 
   const t = TRANSLATIONS[currentLang];
 
@@ -340,6 +351,25 @@ export default function App() {
                 <span>Gacha</span>
               </button>
 
+              {/* Fusión Evolution Tab */}
+              <button
+                onClick={() => {
+                  soundManager.playMarbleClick(0.5);
+                  setCurrentScreen('fusion');
+                }}
+                className={`px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 relative ${
+                  currentScreen === 'fusion'
+                    ? 'bg-purple-500/20 text-purple-300 font-bold border border-purple-500/40'
+                    : 'hover:text-white'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5 text-purple-400" />
+                <span>Fusión</span>
+                {readyToFuseCount > 0 && (
+                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                )}
+              </button>
+
               <button
                 onClick={() => {
                   soundManager.playMarbleClick(0.5);
@@ -451,6 +481,14 @@ export default function App() {
         {currentScreen === 'gacha' && (
           <GachaHatchingToy 
             onGoToCompetitive={() => setCurrentScreen('competitive')}
+            onGoToFusion={() => setCurrentScreen('fusion')}
+            currentLang={currentLang}
+          />
+        )}
+
+        {currentScreen === 'fusion' && (
+          <FusionMenuView
+            onGoToIncubator={() => setCurrentScreen('gacha')}
             currentLang={currentLang}
           />
         )}
@@ -459,6 +497,28 @@ export default function App() {
 
         {currentScreen === 'editor' && <ArenaEditorPreview />}
       </main>
+
+      {/* Creator Code Button in bottom-left corner */}
+      <div className="fixed bottom-4 left-4 z-40">
+        <button
+          onClick={() => {
+            soundManager.playMarbleClick(0.6);
+            setIsCreatorCodeOpen(true);
+          }}
+          className="px-3.5 py-2 rounded-2xl bg-slate-900/90 hover:bg-slate-800 border border-amber-500/50 hover:border-amber-400 text-amber-300 font-bold text-xs shadow-xl shadow-amber-500/10 flex items-center gap-2 transition-all transform hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-md"
+          title="Canjear Código de Creador"
+        >
+          <Gift className="w-4 h-4 text-amber-400 animate-pulse" />
+          <span className="hidden sm:inline">Código de Creador</span>
+          <span className="sm:hidden">Código</span>
+        </button>
+      </div>
+
+      {/* Creator Code Modal */}
+      <CreatorCodeModal
+        isOpen={isCreatorCodeOpen}
+        onClose={() => setIsCreatorCodeOpen(false)}
+      />
 
       {/* Victory Screen Modal (Appears when only 1 marble survives!) */}
       {winnerMarble && (

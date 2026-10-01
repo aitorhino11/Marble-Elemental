@@ -31,11 +31,13 @@ import confetti from 'canvas-confetti';
 
 interface GachaHatchingToyProps {
   onGoToCompetitive?: () => void;
+  onGoToFusion?: () => void;
   currentLang?: SupportedLanguage;
 }
 
 export const GachaHatchingToy: React.FC<GachaHatchingToyProps> = ({
   onGoToCompetitive,
+  onGoToFusion,
   currentLang = 'es'
 }) => {
   const [profile, setProfile] = useState<CompetitivePlayerProfile>(competitiveManager.getProfile());
@@ -444,10 +446,32 @@ export const GachaHatchingToy: React.FC<GachaHatchingToyProps> = ({
                       </span>
                     ) : (
                       <span className="text-xs font-mono font-bold text-slate-300 uppercase tracking-widest bg-slate-800 px-4 py-1.5 rounded-full border border-slate-700">
-                        {isNewUnlock ? '★ ¡NUEVA CANICA COMÚN DESBLOQUEADA! ★' : '★ ¡MEJORA DE MAESTRÍA! ★'}
+                        {isNewUnlock ? '★ ¡NUEVA CANICA DESBLOQUEADA! ★' : '🔄 ¡COPIA REPETIDA PARA FUSIÓN! 🔄'}
                       </span>
                     )}
                   </div>
+
+                  {!isNewUnlock && (
+                    <div className="p-3 rounded-2xl bg-gradient-to-r from-purple-950/90 via-slate-900 to-purple-950/90 border border-purple-500/70 text-purple-200 text-xs font-bold flex flex-col sm:flex-row items-center justify-between gap-3 w-full shadow-lg">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-5 h-5 text-amber-400 shrink-0 animate-spin duration-3000" />
+                        <div>
+                          <span>¡Copia repetida lista para evolucionar!</span>
+                          <span className="font-mono text-[11px] text-purple-300 font-normal block">
+                            Tienes {profile.marbleDuplicates[revealedPower.id] || 1} copia(s) disponibles para subirla a Nivel {(profile.marbleLevels[revealedPower.id] || 1) + 1}.
+                          </span>
+                        </div>
+                      </div>
+                      {onGoToFusion && (
+                        <button
+                          onClick={onGoToFusion}
+                          className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-purple-600 hover:from-amber-400 hover:to-purple-500 text-slate-950 font-black text-xs shrink-0 cursor-pointer shadow-md transition-all hover:scale-105"
+                        >
+                          Ir a Fusión
+                        </button>
+                      )}
+                    </div>
+                  )}
 
                   {/* Animated Marble Canvas Showcase */}
                   <div className="relative">

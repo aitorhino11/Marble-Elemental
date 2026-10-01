@@ -33,6 +33,8 @@ const DEFAULT_PROFILE: CompetitivePlayerProfile = {
   winStreak: 0,
   bestElo: 120,
   marbleLevels: { 'elem-fire': 1 },
+  marbleDuplicates: {},
+  redeemedCodes: [],
   incubatorEggs: [
     {
       id: 'egg-starter-1',
@@ -70,6 +72,15 @@ export class CompetitiveManager {
         // Ensure at least 1 marble is unlocked
         if (!parsed.unlockedMarbleIds || parsed.unlockedMarbleIds.length === 0) {
           parsed.unlockedMarbleIds = ['elem-fire'];
+        }
+        if (!parsed.marbleDuplicates) {
+          parsed.marbleDuplicates = {};
+        }
+        if (!parsed.marbleLevels) {
+          parsed.marbleLevels = { 'elem-fire': 1 };
+        }
+        if (!parsed.redeemedCodes) {
+          parsed.redeemedCodes = [];
         }
         return { ...DEFAULT_PROFILE, ...parsed };
       }
@@ -210,7 +221,14 @@ export class CompetitiveManager {
    * Spends the egg tokens and unlocks a marble from the locked roster!
    * Respects exact drop rates and boosts chances based on egg rarity.
    */
-  public hatchEgg(eggId: string): { power: MarblePower; isNewUnlock: boolean; newLevel: number; eggRarity: RarityTier } | null {
+  public hatchEgg(eggId: string): { 
+    power: MarblePower; 
+    isNewUnlock: boolean; 
+    isDuplicate: boolean; 
+    currentDuplicates: number; 
+    newLevel: number; 
+    eggRarity: RarityTier 
+  } | null {
     const eggIndex = this.profile.incubatorEggs.findIndex(e => e.id === eggId && !e.isHatched);
     if (eggIndex === -1) return null;
 
@@ -221,9 +239,8 @@ export class CompetitiveManager {
     this.profile.eggTokens -= egg.costTokens;
     this.profile.incubatorEggs.splice(eggIndex, 1);
 
-    // Look for locked marbles or all marbles if all unlocked
-    const lockedPowers = MARBLE_POWERS.filter(p => !this.profile.unlockedMarbleIds.includes(p.id));
-    const candidatePool = lockedPowers.length > 0 ? lockedPowers : MARBLE_POWERS;
+    // Candidates include all 20 powers, allowing duplicates for the Fusion evolution system!
+    const candidatePool = MARBLE_POWERS;
 
     // Multiplier per rarity based on egg tier
     const getEggRarityMultiplier = (pRarity: RarityTier, eggRarity: RarityTier): number => {
@@ -269,21 +286,99 @@ export class CompetitiveManager {
     }
 
     let isNewUnlock = false;
-    if (lockedPowers.length > 0) {
-      if (!this.profile.unlockedMarbleIds.includes(chosenPower.id)) {
-        this.profile.unlockedMarbleIds.push(chosenPower.id);
-        this.profile.marbleLevels[chosenPower.id] = 1;
-        isNewUnlock = true;
-      }
+    let isDuplicate = false;
+
+    if (!this.profile.unlockedMarbleIds.includes(chosenPower.id)) {
+      // First time unlocking this marble
+      this.profile.unlockedMarbleIds.push(chosenPower.id);
+      this.profile.marbleLevels[chosenPower.id] = 1;
+      this.profile.marbleDuplicates[chosenPower.id] = 0;
+      isNewUnlock = true;
+      isDuplicate = false;
     } else {
-      const curLvl = this.profile.marbleLevels[chosenPower.id] || 1;
-      this.profile.marbleLevels[chosenPower.id] = curLvl + 1;
+      // Duplicate marble obtained! Added as a fusion copy to level it up in the Fusion tab
+      this.profile.marbleDuplicates[chosenPower.id] = (this.profile.marbleDuplicates[chosenPower.id] || 0) + 1;
       isNewUnlock = false;
+      isDuplicate = true;
     }
 
-    const newLevel = this.profile.marbleLevels[chosenPower.id] || 1;
+    const currentLevel = this.profile.marbleLevels[chosenPower.id] || 1;
+    const currentDuplicates = this.profile.marbleDuplicates[chosenPower.id] || 0;
     this.saveProfile();
-    return { power: chosenPower, isNewUnlock, newLevel, eggRarity: egg.rarity };
+    return { 
+      power: chosenPower, 
+      isNewUnlock, 
+      isDuplicate, 
+      currentDuplicates,
+      newLevel: currentLevel, 
+      eggRarity: egg.rarity 
+    };
+  }
+
+  /**
+   * Fuse a marble with a duplicate copy to elevate its level by 1!
+   */
+  public fuseMarble(powerId: string): { success: boolean; newLevel: number; error?: string } {
+    const availableCopies = this.profile.marbleDuplicates[powerId] || 0;
+    if (availableCopies < 1) {
+      return { 
+        success: false, 
+        newLevel: this.profile.marbleLevels[powerId] || 1, 
+        error: 'No tienes copias repetidas de esta canica para fusionar.' 
+      };
+    }
+
+    // Deduct 1 duplicate copy
+    this.profile.marbleDuplicates[powerId] = availableCopies - 1;
+
+    // Increment level by 1
+    const currentLvl = this.profile.marbleLevels[powerId] || 1;
+    const newLvl = currentLvl + 1;
+    this.profile.marbleLevels[powerId] = newLvl;
+
+    this.saveProfile();
+    return { success: true, newLevel: newLvl };
+  }
+
+  /**
+   * Creator Code Redemption:
+   * Supports "aitorhino" (+160 Fragmentos / Tokens)
+   */
+  public redeemCreatorCode(rawCode: string): { success: boolean; rewardTokens: number; message: string } {
+    const cleanCode = rawCode.trim().toLowerCase();
+    if (!cleanCode) {
+      return { success: false, rewardTokens: 0, message: 'Introduce un código de creador válido.' };
+    }
+
+    if (!this.profile.redeemedCodes) {
+      this.profile.redeemedCodes = [];
+    }
+
+    if (this.profile.redeemedCodes.includes(cleanCode)) {
+      return { 
+        success: false, 
+        rewardTokens: 0, 
+        message: '¡Este código de creador ya ha sido canjeado anteriormente!' 
+      };
+    }
+
+    if (cleanCode === 'aitorhino') {
+      const rewardTokens = 160;
+      this.profile.eggTokens += rewardTokens;
+      this.profile.redeemedCodes.push(cleanCode);
+      this.saveProfile();
+      return { 
+        success: true, 
+        rewardTokens, 
+        message: '¡Código AITORHINO canjeado con éxito! Has recibido +160 Fragmentos.' 
+      };
+    }
+
+    return { 
+      success: false, 
+      rewardTokens: 0, 
+      message: 'Código de creador desconocido. ¡Prueba a introducir "aitorhino"!' 
+    };
   }
 
   /**

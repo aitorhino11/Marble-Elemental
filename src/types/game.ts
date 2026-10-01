@@ -79,6 +79,7 @@ export interface MarbleEntity {
   masterId?: string;
   cloneLife?: number;
   titanTimer?: number;
+  fishTimer?: number;
   originalRadius?: number;
   originalMass?: number;
   statusEffect?: {
@@ -93,7 +94,7 @@ export interface MarbleEntity {
 
 export interface PowerProjectile {
   id: string;
-  type: 'fireball' | 'boulder' | 'frost_spear' | 'lightning_arc' | 'poison_pool' | 'vortex' | 'laser' | 'blackhole' | 'landmine' | 'nuke' | 'anvil' | 'tornado';
+  type: 'fireball' | 'boulder' | 'frost_spear' | 'lightning_arc' | 'poison_pool' | 'vortex' | 'laser' | 'blackhole' | 'landmine' | 'nuke' | 'anvil' | 'tornado' | 'fishing_hook' | 'fish_food';
   ownerId: string;
   x: number;
   y: number;

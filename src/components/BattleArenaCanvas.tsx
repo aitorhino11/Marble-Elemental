@@ -142,7 +142,7 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
         energy: 0,
         maxEnergy: 100,
         cooldown: Math.random() * 2.0 + 1.2,
-        maxCooldown: Math.max(3.6, p.cooldownSeconds * 0.85),
+        maxCooldown: p.id === 'legend-fisherman' ? 8.0 : p.id === 'elem-poison' ? 7.0 : Math.max(3.6, p.cooldownSeconds * 0.85),
         color: p.colorHex,
         power: p,
         isAlive: true,
@@ -267,9 +267,6 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
 
       const marbles = marblesRef.current;
 
-      // FIRST 14.5 SECONDS: Defensive kinetic barrier so NO ONE dies before 15 seconds!
-      const isDefensivePeriod = totalTime < 14.5;
-
       // 3. Update Marbles
       for (let i = marbles.length - 1; i >= 0; i--) {
         const m = marbles[i];
@@ -310,16 +307,16 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
         if (m.statusEffect) {
           m.statusEffect.duration -= dt;
 
-          // POISON TICKS: If poisoned, take poison tick damage every second with green bubbles!
+          // POISON TICKS: Deals 1 damage per tick as requested
           if (m.statusEffect.type === 'poisoned') {
             if (Math.random() < 0.25) {
-              const poisonDmg = isDefensivePeriod ? 3 : 6;
-              m.hp = Math.max(isDefensivePeriod ? 35 : 0, m.hp - poisonDmg);
+              const poisonDmg = 1;
+              m.hp = Math.max(0, m.hp - poisonDmg);
               popupsRef.current.push({
                 id: Math.random().toString(),
                 x: m.x + (Math.random() - 0.5) * 15,
                 y: m.y - 18,
-                text: `☠️ -${poisonDmg}`,
+                text: `☠️ -1`,
                 color: '#84cc16',
                 lifetime: 0,
                 scale: 1.1,
@@ -341,6 +338,48 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
 
           if (m.statusEffect.duration <= 0) {
             m.statusEffect = undefined;
+          }
+        }
+
+        // Pescador Passive: Cada 3 segundos saca pescados saltarines que le curan 15 de vida al comerlos!
+        if (m.power.id === 'legend-fisherman' && m.isAlive) {
+          m.fishTimer = (m.fishTimer || 0) + dt;
+          if (m.fishTimer >= 3.0) {
+            m.fishTimer = 0;
+            const spawnA = Math.random() * Math.PI * 2;
+            const spawnDist = m.radius + 25 + Math.random() * 45;
+            const fx = Math.min(cx + arenaRadius * 0.82, Math.max(cx - arenaRadius * 0.82, m.x + Math.cos(spawnA) * spawnDist));
+            const fy = Math.min(cy + arenaRadius * 0.82, Math.max(cy - arenaRadius * 0.82, m.y + Math.sin(spawnA) * spawnDist));
+
+            projectilesRef.current.push({
+              id: `fish-${Date.now()}-${Math.random()}`,
+              type: 'fish_food',
+              ownerId: m.id,
+              x: fx,
+              y: fy,
+              vx: (Math.random() - 0.5) * 40,
+              vy: (Math.random() - 0.5) * 40,
+              radius: 13,
+              damage: 0,
+              life: 0,
+              maxLife: 15.0,
+              color: '#0284c7',
+              extra: { flopPhase: Math.random() * Math.PI * 2 }
+            });
+
+            // Splash ripples
+            for (let sp = 0; sp < 5; sp++) {
+              particlesRef.current.push({
+                x: fx,
+                y: fy,
+                vx: (Math.random() - 0.5) * 60,
+                vy: (Math.random() - 0.5) * 60,
+                color: '#38bdf8',
+                size: 3,
+                life: 0,
+                maxLife: 0.6
+              });
+            }
           }
         }
 
@@ -442,7 +481,7 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
                 // 3. RAYO: Rayo en cadena directo que electrocuta y causa parálisis EMP
                 if (targetMarble) {
                   const target = targetMarble as MarbleEntity;
-                  target.hp = Math.max(isDefensivePeriod ? 35 : 0, target.hp - 32);
+                  target.hp = Math.max(0, target.hp - 32);
                   target.statusEffect = { type: 'emp', duration: 1.8 };
                   m.damageDealt += 32;
                   soundManager.playHeavyImpact(0.8);
@@ -503,7 +542,9 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
               }
 
               case 'elem-poison': {
-                // 6. VENENO: Escupe charco de ácido tóxico Y rocía veneno que infecta
+                // 6. VENENO: Escupe charco de ácido tóxico e infecta (-10% velocidad y 1 de daño durante 3s con 7s cooldown)
+                m.cooldown = 7.0;
+                m.maxCooldown = 7.0;
                 projectilesRef.current.push({
                   id: Math.random().toString(),
                   type: 'poison_pool',
@@ -513,13 +554,13 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
                   vx: 0,
                   vy: 0,
                   radius: 45,
-                  damage: 7,
+                  damage: 1,
                   life: 0,
-                  maxLife: 4.5,
+                  maxLife: 3.0,
                   color: '#84cc16'
                 });
                 if (targetMarble) {
-                  (targetMarble as MarbleEntity).statusEffect = { type: 'poisoned', duration: 4.5 };
+                  (targetMarble as MarbleEntity).statusEffect = { type: 'poisoned', duration: 3.0 };
                 }
                 break;
               }
@@ -573,7 +614,7 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
                   if (other.id !== m.id && other.isAlive && (!isTeamMode || other.team !== m.team)) {
                     other.vx = -other.vx * 1.6;
                     other.vy = -other.vy * 1.6;
-                    other.hp = Math.max(isDefensivePeriod ? 35 : 0, other.hp - 20);
+                    other.hp = Math.max(0, other.hp - 20);
                   }
                 });
                 traumaRef.current = 0.6;
@@ -740,7 +781,7 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
                     const pullA = Math.atan2(m.y - other.y, m.x - other.x);
                     other.vx += Math.cos(pullA) * 260;
                     other.vy += Math.sin(pullA) * 260;
-                    other.hp = Math.max(isDefensivePeriod ? 35 : 0, other.hp - 18);
+                    other.hp = Math.max(0, other.hp - 18);
                   }
                 });
                 break;
@@ -785,11 +826,84 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
                 break;
               }
 
+              case 'legend-fisherman': {
+                // 21. PESCADOR (Legendaria): Lanza la caña con anzuelo tenso y estampa al rival contra la pared causándole 30 de daño (8s cooldown)!
+                m.cooldown = 8.0;
+                m.maxCooldown = 8.0;
+                if (targetMarble) {
+                  const target = targetMarble as MarbleEntity;
+
+                  // Proyectil visual del sedal y anzuelo curvado con tensión
+                  projectilesRef.current.push({
+                    id: Math.random().toString(),
+                    type: 'fishing_hook',
+                    ownerId: m.id,
+                    x: m.x,
+                    y: m.y,
+                    vx: 0,
+                    vy: 0,
+                    radius: 20,
+                    damage: 30,
+                    life: 0,
+                    maxLife: 1.1,
+                    color: '#0284c7',
+                    targetId: target.id,
+                    extra: {
+                      hookedX: target.x,
+                      hookedY: target.y
+                    }
+                  });
+
+                  soundManager.playPowerTrigger('fisherman');
+                  soundManager.playMarbleHitSound('legend-fisherman', 1.5);
+
+                  // Vector hacia el muro más cercano
+                  const angleFromCenter = Math.atan2(target.y - cy, target.x - cx);
+
+                  // Estampa al rival fuertísimo contra la pared
+                  target.vx = Math.cos(angleFromCenter) * 880;
+                  target.vy = Math.sin(angleFromCenter) * 880;
+
+                  // Quita 30 de daño por el golpe contra el muro
+                  target.hp = Math.max(0, target.hp - 30);
+                  m.damageDealt += 30;
+
+                  traumaRef.current = 0.7;
+
+                  popupsRef.current.push({
+                    id: Math.random().toString(),
+                    x: target.x,
+                    y: target.y - 25,
+                    text: '🎣 ¡ENGANCHADO Y ESTAMPADO! -30',
+                    color: '#38bdf8',
+                    lifetime: 0,
+                    scale: 1.6,
+                    isCrit: true
+                  });
+
+                  // Partículas acuáticas de impacto
+                  for (let p = 0; p < 14; p++) {
+                    const pa = Math.random() * Math.PI * 2;
+                    particlesRef.current.push({
+                      x: target.x,
+                      y: target.y,
+                      vx: Math.cos(pa) * (140 + Math.random() * 160),
+                      vy: Math.sin(pa) * (140 + Math.random() * 160),
+                      color: Math.random() < 0.6 ? '#38bdf8' : '#e0f2fe',
+                      size: 4,
+                      life: 0,
+                      maxLife: 0.8
+                    });
+                  }
+                }
+                break;
+              }
+
               default: {
                 // Generic fallback
                 if (targetMarble) {
                   const target = targetMarble as MarbleEntity;
-                  target.hp = Math.max(isDefensivePeriod ? 35 : 0, target.hp - 25);
+                  target.hp = Math.max(0, target.hp - 25);
                 }
                 break;
               }
@@ -802,7 +916,9 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
           m.vx = 0;
           m.vy = 0;
         } else {
-          const minSpeed = 240;
+          // If poisoned: slow down by 10% as requested!
+          const poisonSlow = m.statusEffect?.type === 'poisoned' ? 0.90 : 1.0;
+          const minSpeed = 240 * poisonSlow;
           const curSpeed = Math.hypot(m.vx, m.vy);
           if (curSpeed < minSpeed) {
             const boostA = curSpeed > 10 ? Math.atan2(m.vy, m.vx) : Math.random() * Math.PI * 2;
@@ -817,8 +933,8 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
           m.vx *= selectedMap.frictionMultiplier;
           m.vy *= selectedMap.frictionMultiplier;
 
-          m.x += m.vx * dt;
-          m.y += m.vy * dt;
+          m.x += m.vx * poisonSlow * dt;
+          m.y += m.vy * poisonSlow * dt;
 
           if (curSpeed > 80 && Math.random() < 0.7) {
             m.trail.push({ x: m.x, y: m.y, alpha: 0.6 });
@@ -897,7 +1013,7 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
 
               // Core crushing damage
               if (d < proj.radius * 0.7) {
-                enemy.hp = Math.max(isDefensivePeriod ? 35 : 0, enemy.hp - 18 * dt);
+                enemy.hp = Math.max(0, enemy.hp - 18 * dt);
               }
             }
           });
@@ -919,7 +1035,7 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
                 const spinA = Math.atan2(dy, dx) + Math.PI / 2;
                 enemy.vx += Math.cos(spinA) * 220 * dt;
                 enemy.vy += Math.sin(spinA) * 220 * dt;
-                enemy.hp = Math.max(isDefensivePeriod ? 35 : 0, enemy.hp - 10 * dt);
+                enemy.hp = Math.max(0, enemy.hp - 10 * dt);
               }
             }
           });
@@ -933,10 +1049,90 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
             if (enemy.id !== proj.ownerId && enemy.isAlive && (!isTeamMode || enemy.team !== marbles.find(m => m.id === proj.ownerId)?.team)) {
               const dist = Math.hypot(enemy.x - proj.x, enemy.y - proj.y);
               if (dist < proj.radius + enemy.radius) {
-                enemy.statusEffect = { type: 'poisoned', duration: 3.5 };
+                enemy.statusEffect = { type: 'poisoned', duration: 3.0 };
               }
             }
           });
+          return true;
+        }
+
+        // FISH FOOD BEHAVIOR (Pescador saca pescados cada 3s y recupera 15 HP al comerlos)
+        if (proj.type === 'fish_food') {
+          proj.x += proj.vx * dt;
+          proj.y += proj.vy * dt;
+          proj.vx *= 0.94;
+          proj.vy *= 0.94;
+
+          drawActiveProjectile(ctx, proj, totalTime);
+
+          // Pescador come su pescado para curarse 15 HP
+          const owner = marbles.find(m => m.id === proj.ownerId && m.isAlive);
+          if (owner) {
+            const dist = Math.hypot(owner.x - proj.x, owner.y - proj.y);
+            if (dist < owner.radius + proj.radius + 8) {
+              owner.hp = Math.min(owner.maxHp, owner.hp + 15);
+              soundManager.playMarbleClick(1.6);
+
+              popupsRef.current.push({
+                id: Math.random().toString(),
+                x: owner.x,
+                y: owner.y - 22,
+                text: '🐟 +15 HP (¡Pescado Fresco!)',
+                color: '#10b981',
+                lifetime: 0,
+                scale: 1.4,
+                isCrit: true
+              });
+
+              // Chispas de curación acuática y verde
+              for (let hp = 0; hp < 8; hp++) {
+                particlesRef.current.push({
+                  x: owner.x + (Math.random() - 0.5) * owner.radius,
+                  y: owner.y + (Math.random() - 0.5) * owner.radius,
+                  vx: (Math.random() - 0.5) * 50,
+                  vy: -40 - Math.random() * 30,
+                  color: hp % 2 === 0 ? '#10b981' : '#38bdf8',
+                  size: 3.5,
+                  life: 0,
+                  maxLife: 0.7
+                });
+              }
+
+              return false; // Pez consumido!
+            }
+          }
+          return true;
+        }
+
+        // FISHING HOOK BEHAVIOR (Dibuja la caña, sedal tenso vibrante y anzuelo sobre la víctima)
+        if (proj.type === 'fishing_hook') {
+          const owner = marbles.find(m => m.id === proj.ownerId);
+          const target = marbles.find(m => m.id === proj.targetId);
+
+          if (owner && target) {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
+            ctx.lineWidth = 2.4;
+            ctx.shadowColor = '#38bdf8';
+            ctx.shadowBlur = 8;
+
+            const pullProgress = proj.life / proj.maxLife;
+            const midX = (owner.x + target.x) / 2 + Math.sin(pullProgress * Math.PI * 6) * 14;
+            const midY = (owner.y + target.y) / 2 - 25;
+
+            ctx.beginPath();
+            ctx.moveTo(owner.x, owner.y);
+            ctx.quadraticCurveTo(midX, midY, target.x, target.y);
+            ctx.stroke();
+
+            // Anzuelo brillante sobre el objetivo
+            ctx.fillStyle = '#f59e0b';
+            ctx.beginPath();
+            ctx.arc(target.x, target.y, 6, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+          }
           return true;
         }
 
@@ -948,7 +1144,7 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
               const d = Math.hypot(m.x - proj.x, m.y - proj.y);
               if (d < proj.radius + m.radius) {
                 // Detonate mine!
-                m.hp = Math.max(isDefensivePeriod ? 35 : 0, m.hp - proj.damage);
+                m.hp = Math.max(0, m.hp - proj.damage);
                 soundManager.playHeavyImpact(1.0);
                 traumaRef.current = 0.6;
                 popupsRef.current.push({
@@ -989,7 +1185,7 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
             ctx.stroke();
             ctx.restore();
 
-            target.hp = Math.max(isDefensivePeriod ? 35 : 0, target.hp - 28 * dt);
+            target.hp = Math.max(0, target.hp - 28 * dt);
             owner.damageDealt += 28 * dt;
           }
           return true;
@@ -1006,7 +1202,7 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
             traumaRef.current = 0.8;
             const target = marbles.find(m => m.id === proj.targetId);
             if (target && target.isAlive) {
-              target.hp = Math.max(isDefensivePeriod ? 35 : 0, target.hp - proj.damage);
+              target.hp = Math.max(0, target.hp - proj.damage);
               target.statusEffect = { type: 'emp', duration: 2.0 }; // Stunned
               popupsRef.current.push({
                 id: Math.random().toString(),
@@ -1040,8 +1236,8 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
             const hitDist = Math.hypot(m.x - proj.x, m.y - proj.y);
             if (hitDist < proj.radius + m.radius) {
               if (m.statusEffect?.type !== 'shielded') {
-                const finalDmg = isDefensivePeriod ? Math.round(proj.damage * 0.45) : proj.damage;
-                m.hp = Math.max(isDefensivePeriod ? 35 : 0, m.hp - finalDmg);
+                const finalDmg = proj.damage;
+                m.hp = Math.max(0, m.hp - finalDmg);
 
                 const owner = marbles.find(o => o.id === proj.ownerId);
                 if (owner) owner.damageDealt += finalDmg;
@@ -1130,12 +1326,22 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
             m2.vy += p * m1.mass * ny;
 
             const impactSpeed = Math.hypot(kx, ky);
-            soundManager.playMarbleClick(Math.min(1.2, impactSpeed / 300));
+            // Play distinct sound effect corresponding to the striking marble's power!
+            const strikingMarble = Math.hypot(m1.vx, m1.vy) >= Math.hypot(m2.vx, m2.vy) ? m1 : m2;
+            soundManager.playMarbleHitSound(strikingMarble.power.id, Math.min(1.5, impactSpeed / 220));
             traumaRef.current = Math.min(1.0, traumaRef.current + 0.15);
 
             // TEAM FRIENDLY FIRE: Teammates bounce without dealing damage!
             const isFriendlyFire = isTeamMode && m1.team && m2.team && m1.team === m2.team;
-            if (isFriendlyFire) {
+
+            // CLONE FRIENDLY FIRE: Los clones de la canica de clonación no se hacen daño entre sí ni a su maestro!
+            const isCloneKin = Boolean(
+              (m1.isClone && m1.masterId === m2.id) ||
+              (m2.isClone && m2.masterId === m1.id) ||
+              (m1.isClone && m2.isClone && m1.masterId === m2.masterId)
+            );
+
+            if (isFriendlyFire || isCloneKin) {
               continue;
             }
 
@@ -1173,58 +1379,79 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
               });
             }
 
-            // Balanced Collision Damage (deals 7 to 13 HP per clash, ensuring 15s to 60s matches)
+            // Collision Damage
             const baseDamage = Math.max(6, Math.round(7 + (impactSpeed / 75) * m1.mass));
-            const dmgToM2 = Math.round(baseDamage * shatterBonusM2 * (m2.statusEffect?.type === 'shielded' ? 0 : 1));
-            const dmgToM1 = Math.round(baseDamage * shatterBonusM1 * (m1.statusEffect?.type === 'shielded' ? 0 : 1));
+            
+            // Pescador quita 30 de daño al chocar contra otra bola!
+            const rawDmgToM2 = m1.power.id === 'legend-fisherman' ? 30 : Math.round(baseDamage * shatterBonusM2);
+            const rawDmgToM1 = m2.power.id === 'legend-fisherman' ? 30 : Math.round(baseDamage * shatterBonusM1);
 
-            if (isDefensivePeriod) {
-              m1.hp = Math.max(35, m1.hp - Math.round(dmgToM1 * 0.45));
-              m2.hp = Math.max(35, m2.hp - Math.round(dmgToM2 * 0.45));
-            } else {
-              m1.hp = Math.max(0, m1.hp - dmgToM1);
-              m2.hp = Math.max(0, m2.hp - dmgToM2);
-            }
+            const dmgToM2 = m2.statusEffect?.type === 'shielded' ? 0 : rawDmgToM2;
+            const dmgToM1 = m1.statusEffect?.type === 'shielded' ? 0 : rawDmgToM1;
+
+            m1.hp = Math.max(0, m1.hp - dmgToM1);
+            m2.hp = Math.max(0, m2.hp - dmgToM2);
 
             m1.damageDealt += dmgToM2;
             m2.damageDealt += dmgToM1;
 
             // Damage popup
-            popupsRef.current.push({
-              id: Math.random().toString(),
-              x: (m1.x + m2.x) / 2,
-              y: (m1.y + m2.y) / 2 - 10,
-              text: `-${dmgToM2}`,
-              color: '#ffffff',
-              lifetime: 0,
-              scale: 1.0,
-              isCrit: false
-            });
+            if (m1.power.id === 'legend-fisherman' && dmgToM2 > 0) {
+              popupsRef.current.push({
+                id: Math.random().toString(),
+                x: m2.x,
+                y: m2.y - 22,
+                text: '💥 -30 (GOLPE PESCADOR)',
+                color: '#38bdf8',
+                lifetime: 0,
+                scale: 1.5,
+                isCrit: true
+              });
+            } else if (m2.power.id === 'legend-fisherman' && dmgToM1 > 0) {
+              popupsRef.current.push({
+                id: Math.random().toString(),
+                x: m1.x,
+                y: m1.y - 22,
+                text: '💥 -30 (GOLPE PESCADOR)',
+                color: '#38bdf8',
+                lifetime: 0,
+                scale: 1.5,
+                isCrit: true
+              });
+            } else {
+              popupsRef.current.push({
+                id: Math.random().toString(),
+                x: (m1.x + m2.x) / 2,
+                y: (m1.y + m2.y) / 2 - 10,
+                text: `-${dmgToM2}`,
+                color: '#ffffff',
+                lifetime: 0,
+                scale: 1.0,
+                isCrit: false
+              });
+            }
 
-            // Knockout check (strictly after defensive period)
-            if (!isDefensivePeriod) {
-              if (m1.hp <= 0 && m1.isAlive) {
-                m1.isAlive = false;
-                m2.kills += 1;
-                soundManager.playKnockoutHit();
-                traumaRef.current = 0.8;
-              }
-              if (m2.hp <= 0 && m2.isAlive) {
-                m2.isAlive = false;
-                m1.kills += 1;
-                soundManager.playKnockoutHit();
-                traumaRef.current = 0.8;
-              }
+            // Knockout check: instant elimination as soon as HP reaches 0 (no 15s delay!)
+            if (m1.hp <= 0 && m1.isAlive) {
+              m1.isAlive = false;
+              m2.kills += 1;
+              soundManager.playKnockoutHit();
+              traumaRef.current = 0.8;
+            }
+            if (m2.hp <= 0 && m2.isAlive) {
+              m2.isAlive = false;
+              m1.kills += 1;
+              soundManager.playKnockoutHit();
+              traumaRef.current = 0.8;
             }
           }
         }
       }
 
-      // 7. VICTORY CONDITION CHECK (Respects Team Mode & Past 15s Minimum)
+      // 7. VICTORY CONDITION CHECK (Respects Team Mode & immediate knockout)
       const livingRealMarbles = marbles.filter(m => m.isAlive && !m.isClone);
-      const canTriggerVictory = totalTime >= 15.0;
 
-      if (canTriggerVictory && !matchFinishedRef.current) {
+      if (!matchFinishedRef.current) {
         if (isTeamMode) {
           // Team victory check
           const redSurvivors = livingRealMarbles.filter(m => m.team === 'red');
@@ -1951,6 +2178,61 @@ function drawActiveProjectile(
     ctx.beginPath();
     ctx.arc(0, 0, nRadius * 0.5, 0, Math.PI * 2);
     ctx.fill();
+
+  } else if (proj.type === 'fish_food') {
+    // Pez saltarín con escamas, cola aleteante, aleta dorsal y brillo curativo
+    const flop = Math.sin(time * 10 + (proj.extra?.flopPhase || 0));
+    ctx.rotate(flop * 0.22);
+    ctx.shadowColor = '#38bdf8';
+    ctx.shadowBlur = 10;
+
+    // Cuerpo con gradiente marino
+    const fishGrad = ctx.createLinearGradient(-proj.radius, 0, proj.radius, 0);
+    fishGrad.addColorStop(0, '#0284c7');
+    fishGrad.addColorStop(0.5, '#38bdf8');
+    fishGrad.addColorStop(1, '#f97316');
+    ctx.fillStyle = fishGrad;
+
+    ctx.beginPath();
+    ctx.ellipse(0, 0, proj.radius * 1.15, proj.radius * 0.65, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+
+    // Cola aleteante
+    ctx.fillStyle = '#f97316';
+    ctx.beginPath();
+    ctx.moveTo(proj.radius * 0.9, 0);
+    ctx.lineTo(proj.radius * 1.5, -proj.radius * 0.55 + flop * 3);
+    ctx.lineTo(proj.radius * 1.5, proj.radius * 0.55 + flop * 3);
+    ctx.closePath();
+    ctx.fill();
+
+    // Ojo del pez
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(-proj.radius * 0.55, -proj.radius * 0.18, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath();
+    ctx.arc(-proj.radius * 0.55, -proj.radius * 0.18, 1.4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Aleta dorsal
+    ctx.fillStyle = '#0ea5e9';
+    ctx.beginPath();
+    ctx.moveTo(-proj.radius * 0.2, -proj.radius * 0.6);
+    ctx.lineTo(proj.radius * 0.2, -proj.radius * 0.95);
+    ctx.lineTo(proj.radius * 0.4, -proj.radius * 0.5);
+    ctx.closePath();
+    ctx.fill();
+
+    // Texto de curación +15 HP
+    ctx.fillStyle = '#10b981';
+    ctx.font = 'bold 9px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('+15 HP', 0, -proj.radius * 1.15);
 
   } else {
     ctx.fillStyle = proj.color;

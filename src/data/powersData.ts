@@ -112,11 +112,11 @@ export const MARBLE_POWERS: MarblePower[] = [
     dropRatePercent: 10.0,
     triggerCondition: 'Continuous contact (> 0.2s graze time) or direct clash',
     visualEffect: 'Neon toxic lime-green bubbling sludge pool laid behind marble trail; infected marbles turn sickly neon green with skull icons.',
-    combatImpact: 'Escupe un charco de ácido e infecta con veneno continuo (daño por tick y -30% velocidad).',
+    combatImpact: 'Escupe un charco de ácido e infecta con veneno continuo (-10% velocidad y 1 de daño durante 3 segundos).',
     tactileFeedback: 'Light rhythmic pulse every 500ms matching DoT damage ticks.',
     soundCue: 'Bubbling acid sizzle and caustic liquid hiss.',
-    cooldownSeconds: 4.0,
-    damageValue: 63,
+    cooldownSeconds: 7.0,
+    damageValue: 1,
     knockbackMultiplier: 0.9,
     viralAppealNote: 'Watching an enemy marble slowly bleed out to 1 HP right before the finish line creates nail-biting suspense.',
     colorHex: '#84CC16',
@@ -407,6 +407,26 @@ export const MARBLE_POWERS: MarblePower[] = [
     viralAppealNote: 'Unpredictable ricochets and arcade pinball bells tap into pure unadulterated chaotic fun and satisfying sensory overload.',
     colorHex: '#F43F5E',
     iconName: 'Dices'
+  },
+  {
+    id: 'legend-fisherman',
+    name: 'Master Angler',
+    nameEs: 'Pescador',
+    category: 'Chaos & Meme/Fun',
+    element: 'Meme',
+    rarity: 'Legendary',
+    dropRatePercent: 1.25,
+    triggerCondition: 'Lanzamiento de caña activo cada 8s y pesca pasiva de peces cada 3s',
+    visualEffect: 'Sedal curvado tenso con anzuelo brillante que engancha al rival y lo estampa fuertísimo contra la pared; peces saltarines curativos que aparecen en la arena.',
+    combatImpact: '¡MUY OP! Lanza la caña y estampa al rival contra la pared causándole 30 de daño. En colisión inflige 30 de daño y cada 3s pesca peces que le curan 15 de vida al comerlos.',
+    tactileFeedback: 'Tirón elástico del sedal con haptic tenso y golpe seco contra el muro.',
+    soundCue: 'Silbido del carrete lanzando el sedal, chapoteo de agua y fuerte impacto contra la pared.',
+    cooldownSeconds: 8.0,
+    damageValue: 30,
+    knockbackMultiplier: 3.2,
+    viralAppealNote: 'Pescar a un rival desprevenido al otro lado del mapa y reventarlo contra el muro garantiza risas y clips virales.',
+    colorHex: '#0284C7',
+    iconName: 'Fish'
   }
 ];
 

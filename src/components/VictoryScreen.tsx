@@ -5,6 +5,7 @@ import { SupportedLanguage, TRANSLATIONS } from '../i18n/translations';
 import { getPowerDisplayName } from '../data/powersData';
 import { IncubatorEggSlot } from '../types/competitive';
 import { drawMarbleSkin } from '../utils/marbleSkinRenderer';
+import { drawSpecificVictoryAnimation, drawSpecificDefeatAnimation } from '../utils/victoryAnimations';
 import { 
   Trophy, 
   RotateCcw, 
@@ -114,80 +115,29 @@ export const VictoryScreen: React.FC<VictoryScreenProps> = ({
       const radius = 55;
 
       if (isPlayerWin) {
-        // WINNER ANIMATION: Joyful energetic bouncing with golden crown
-        const bounce = Math.abs(Math.sin(elapsed * 4.5)) * 26;
-        const cy = baseCy - bounce;
-
-        // Shadow scales with height
-        const shadowScale = 1 - (bounce / 35) * 0.4;
-        ctx.fillStyle = `rgba(0, 0, 0, ${0.45 * shadowScale})`;
-        ctx.beginPath();
-        ctx.ellipse(cx, baseCy + radius * 0.85, radius * 0.85 * shadowScale, radius * 0.3 * shadowScale, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Draw Player Marble with Golden Crown
-        drawMarbleSkin(ctx, {
-          x: cx,
-          y: cy,
+        // UNIQUE WINNER ANIMATION FOR EACH INDIVIDUAL MARBLE
+        drawSpecificVictoryAnimation({
+          ctx,
+          cx,
+          baseCy,
           radius,
           color: showcaseColor,
           element: showcasePower.element,
           powerId: showcasePower.id,
-          expression: 'happy',
-          crown: true,
-          time: elapsed
+          elapsed
         });
-
-        // Floating celebration stars
-        for (let s = 0; s < 5; s++) {
-          const sa = (s / 5) * Math.PI * 2 + elapsed * 1.5;
-          const sDist = radius * 1.45 + Math.sin(elapsed * 3 + s) * 12;
-          const sx = cx + Math.cos(sa) * sDist;
-          const sy = cy + Math.sin(sa) * sDist * 0.65;
-          ctx.fillStyle = s % 2 === 0 ? '#facc15' : '#ffffff';
-          ctx.beginPath();
-          ctx.arc(sx, sy, 3 + Math.sin(elapsed * 6 + s) * 1.5, 0, Math.PI * 2);
-          ctx.fill();
-        }
-
       } else {
-        // DEFEAT ANIMATION: Sad trembling marble with weeping, streaming blue tears
-        const wobble = Math.sin(elapsed * 12) * 1.5;
-        const cy = baseCy;
-
-        // Gloomy puddle shadow
-        ctx.fillStyle = 'rgba(2, 6, 23, 0.6)';
-        ctx.beginPath();
-        ctx.ellipse(cx, baseCy + radius * 0.85, radius * 0.9, radius * 0.35, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Tear progress loops continuously from 0 to 1
-        const tearProg = (elapsed * 1.4) % 1.0;
-
-        drawMarbleSkin(ctx, {
-          x: cx + wobble,
-          y: cy,
+        // UNIQUE DEFEAT ANIMATION FOR EACH INDIVIDUAL MARBLE
+        drawSpecificDefeatAnimation({
+          ctx,
+          cx,
+          baseCy,
           radius,
           color: showcaseColor,
           element: showcasePower.element,
           powerId: showcasePower.id,
-          expression: 'crying',
-          crown: false,
-          tearProgress: tearProg,
-          time: elapsed
+          elapsed
         });
-
-        // Defeat rain motes falling
-        ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
-        ctx.lineWidth = 1.5;
-        for (let r = 0; r < 6; r++) {
-          const rx = cx + ((r * 45) % 140) - 70;
-          const ry = ((elapsed * 180 + r * 60) % 240);
-          ctx.beginPath();
-          ctx.moveTo(rx, ry);
-          ctx.lineTo(rx - 2, ry + 16);
-          ctx.stroke();
-        }
       }
 
       animId = requestAnimationFrame(loop);
