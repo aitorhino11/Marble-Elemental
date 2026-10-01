@@ -1,0 +1,6 @@
+{
+  "name": "Marble Clash: Elemental Arena - Game Design Document & Prototype",
+  "description": "Comprehensive Game Design Document (GDD) and interactive physics combat prototype for Marble Clash: Elemental Arena, featuring 20 distinct elemental powers, gacha hatching, and viral mechanics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
