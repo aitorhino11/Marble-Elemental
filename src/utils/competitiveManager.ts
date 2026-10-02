@@ -218,6 +218,15 @@ export class CompetitiveManager {
   }
 
   /**
+   * Add Egg Fragments (tokens) e.g. from Smartlink Ad reward
+   */
+  public addEggTokens(amount: number): number {
+    this.profile.eggTokens = (this.profile.eggTokens || 0) + amount;
+    this.saveProfile();
+    return this.profile.eggTokens;
+  }
+
+  /**
    * Hatch an egg from the Incubator:
    * Spends the egg tokens and unlocks a marble from the locked roster!
    * Respects exact drop rates and boosts chances based on egg rarity.

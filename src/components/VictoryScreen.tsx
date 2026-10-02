@@ -1,9 +1,10 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MarbleEntity, MarblePower } from '../types/game';
 import { soundManager } from '../utils/audioSystem';
 import { SupportedLanguage, TRANSLATIONS } from '../i18n/translations';
 import { getPowerDisplayName } from '../data/powersData';
 import { IncubatorEggSlot } from '../types/competitive';
+import { competitiveManager } from '../utils/competitiveManager';
 import { drawMarbleSkin } from '../utils/marbleSkinRenderer';
 import { drawSpecificVictoryAnimation, drawSpecificDefeatAnimation } from '../utils/victoryAnimations';
 import { 
@@ -16,7 +17,8 @@ import {
   ShieldAlert,
   Swords,
   ArrowLeft,
-  Volume2
+  Volume2,
+  Tv
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -50,6 +52,19 @@ export const VictoryScreen: React.FC<VictoryScreenProps> = ({
 }) => {
   const t = TRANSLATIONS[currentLang];
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [hasClaimedAd, setHasClaimedAd] = useState<boolean>(false);
+
+  const handleWatchAdForFragments = () => {
+    if (hasClaimedAd) return;
+    try {
+      window.open('https://araplhn.org/4/05bd2d5bed83d63f594834da827fc1cb', '_blank');
+    } catch (e) {
+      console.error('Error opening smartlink ad:', e);
+    }
+    competitiveManager.addEggTokens(45);
+    setHasClaimedAd(true);
+    soundManager.playEggHatchFanfare('Rare');
+  };
 
   // Determine if the player won or lost
   const isPlayerWin = isCompetitive 
@@ -264,6 +279,33 @@ export const VictoryScreen: React.FC<VictoryScreenProps> = ({
                 )}
               </div>
             )}
+
+            {/* Smartlink Adsterra: "ver para 45 fragmentos" */}
+            <div className="pt-0.5">
+              {!hasClaimedAd ? (
+                <button
+                  onClick={handleWatchAdForFragments}
+                  className="w-full py-2.5 px-3.5 rounded-xl bg-gradient-to-r from-purple-950/90 via-indigo-900/60 to-purple-950/90 hover:from-purple-900 hover:via-indigo-800 hover:to-purple-900 border border-purple-500/50 hover:border-amber-400/80 text-purple-200 hover:text-white font-bold text-xs sm:text-sm flex items-center justify-between transition-all shadow-md shadow-purple-950/50 cursor-pointer group active:scale-98"
+                  title="Ver anuncio para conseguir 45 fragmentos"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="p-1 rounded-lg bg-purple-500/20 text-purple-300 group-hover:text-amber-300 transition-colors">
+                      <Tv className="w-3.5 h-3.5" />
+                    </div>
+                    <span className="font-extrabold tracking-wide">ver para 45 fragmentos</span>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-md bg-purple-500/20 border border-purple-400/40 text-purple-300 font-mono text-xs font-black flex items-center gap-1 group-hover:bg-amber-500/20 group-hover:border-amber-400/60 group-hover:text-amber-300 transition-colors">
+                    <Sparkles className="w-3 h-3 text-amber-400" />
+                    +45 🥚
+                  </span>
+                </button>
+              ) : (
+                <div className="w-full py-2 px-3 rounded-xl bg-emerald-950/60 border border-emerald-500/50 text-emerald-300 text-xs font-bold flex items-center justify-center gap-2 shadow-inner">
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>¡Reclamado con éxito! +45 fragmentos añadidos</span>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
