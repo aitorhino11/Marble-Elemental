@@ -81,6 +81,11 @@ export function drawMarbleSkin(
     ctx.stroke();
   }
 
+  // 3.5. TOCHÍSIMA COMBAT AURA FOR ALL 5 LEGENDARY MARBLES (Pelean con animación única y espectacular!)
+  if (['cosm-blackhole', 'mag-warp', 'tech-nuke', 'meme-anvil', 'legend-fisherman'].includes(powerId)) {
+    drawLegendaryCombatAura(ctx, radius, powerId, time);
+  }
+
   // IF SHROUDED (MYSTERY RIVAL IN COMPETITIVE):
   // Renders a shadowy dark void with swirling purple mist and glowing '?'
   if (isShrouded) {
@@ -1517,5 +1522,217 @@ function drawFishermanGear(
   ctx.fill();
 
   ctx.restore();
+  ctx.restore();
+}
+
+/**
+ * Renders distinct, ultra-high-tier combat auras for all 5 Legendary Marbles while fighting
+ */
+function drawLegendaryCombatAura(
+  ctx: CanvasRenderingContext2D,
+  r: number,
+  powerId: string,
+  time: number
+) {
+  ctx.save();
+
+  switch (powerId) {
+    case 'cosm-blackhole': {
+      // 1. Agujero Negro Cósmico: Accretion spiral vortex rings & orbiting pulsars
+      const auraR = r + 14 + Math.sin(time * 6) * 3;
+      
+      // Dual Counter-Rotating Relativistic Event Disks
+      ctx.strokeStyle = '#a855f7';
+      ctx.lineWidth = 3.5;
+      ctx.shadowColor = '#c084fc';
+      ctx.shadowBlur = 18;
+      ctx.beginPath();
+      ctx.arc(0, 0, auraR, time * 3, time * 3 + Math.PI * 1.6);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#ec4899';
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.arc(0, 0, auraR * 0.82, -time * 4, -time * 4 + Math.PI * 1.4);
+      ctx.stroke();
+
+      // 6 Orbiting Pulsar Stars with Starlight Beams
+      for (let s = 0; s < 6; s++) {
+        const sa = time * 3.5 + (s / 6) * Math.PI * 2;
+        const sx = Math.cos(sa) * (auraR + 6);
+        const sy = Math.sin(sa) * (auraR + 6);
+        ctx.fillStyle = s % 2 === 0 ? '#fbcfe8' : '#ffffff';
+        ctx.shadowColor = '#ffffff';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.arc(sx, sy, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      break;
+    }
+
+    case 'mag-warp': {
+      // 2. Salto Cuántico: Quantum chromatic glitch aura with shifting tachyon squares
+      const auraR = r + 12 + Math.sin(time * 8) * 4;
+
+      // Holographic Phase Rings (Offset Cyan & Magenta)
+      ctx.strokeStyle = 'rgba(236, 72, 153, 0.8)';
+      ctx.lineWidth = 3;
+      ctx.shadowColor = '#ec4899';
+      ctx.shadowBlur = 16;
+      ctx.beginPath();
+      ctx.arc(-2, 1, auraR, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.strokeStyle = 'rgba(6, 182, 212, 0.8)';
+      ctx.lineWidth = 3;
+      ctx.shadowColor = '#06b6d4';
+      ctx.shadowBlur = 16;
+      ctx.beginPath();
+      ctx.arc(2, -1, auraR, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // 4 Rotating Quantum Glyphs / Squares
+      ctx.save();
+      ctx.rotate(time * 2.5);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.5;
+      for (let q = 0; q < 4; q++) {
+        const qa = (q / 4) * Math.PI * 2;
+        const qx = Math.cos(qa) * (auraR + 4);
+        const qy = Math.sin(qa) * (auraR + 4);
+        ctx.strokeRect(qx - 4, qy - 4, 8, 8);
+      }
+      ctx.restore();
+      break;
+    }
+
+    case 'tech-nuke': {
+      // 3. Bomba Nuclear Megatón: Radioactive trefoil hazard blades & uranium core glow
+      const auraR = r + 14;
+
+      // Glowing Firestorm Hazard Ring
+      ctx.strokeStyle = '#facc15';
+      ctx.lineWidth = 3.5;
+      ctx.shadowColor = '#f97316';
+      ctx.shadowBlur = 20;
+      ctx.beginPath();
+      ctx.arc(0, 0, auraR, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // 3 Rotating Radioactive Hazard Blades
+      ctx.save();
+      ctx.rotate(time * 4);
+      for (let t = 0; t < 3; t++) {
+        const ta = (t / 3) * Math.PI * 2;
+        ctx.fillStyle = '#ef4444';
+        ctx.shadowColor = '#facc15';
+        ctx.shadowBlur = 14;
+        ctx.beginPath();
+        ctx.arc(Math.cos(ta) * (auraR + 2), Math.sin(ta) * (auraR + 2), 6, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Warning Hazard Spike
+        ctx.strokeStyle = '#facc15';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(ta) * auraR, Math.sin(ta) * auraR);
+        ctx.lineTo(Math.cos(ta) * (auraR + 10), Math.sin(ta) * (auraR + 10));
+        ctx.stroke();
+      }
+      ctx.restore();
+      break;
+    }
+
+    case 'meme-anvil': {
+      // 4. Yunque de 100 Toneladas: Heavy industrial steel gear teeth & kinetic shock spikes
+      const auraR = r + 12;
+
+      // Heavy Industrial Gear Perimeter
+      ctx.save();
+      ctx.rotate(time * 2);
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 3;
+      ctx.shadowColor = '#facc15';
+      ctx.shadowBlur = 14;
+
+      const teeth = 8;
+      ctx.beginPath();
+      for (let i = 0; i < teeth; i++) {
+        const a1 = (i / teeth) * Math.PI * 2;
+        const a2 = a1 + (Math.PI / teeth) * 0.5;
+        const a3 = a1 + Math.PI / teeth;
+        const rOut = auraR + 7;
+        const rIn = auraR;
+        ctx.lineTo(Math.cos(a1) * rIn, Math.sin(a1) * rIn);
+        ctx.lineTo(Math.cos(a1) * rOut, Math.sin(a1) * rOut);
+        ctx.lineTo(Math.cos(a2) * rOut, Math.sin(a2) * rOut);
+        ctx.lineTo(Math.cos(a2) * rIn, Math.sin(a2) * rIn);
+      }
+      ctx.closePath();
+      ctx.stroke();
+
+      // Comic Golden Impact Sparkles orbiting
+      for (let s = 0; s < 4; s++) {
+        const sa = -time * 3 + (s / 4) * Math.PI * 2;
+        const sx = Math.cos(sa) * (auraR + 12);
+        const sy = Math.sin(sa) * (auraR + 12);
+        ctx.fillStyle = '#facc15';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.fillText('⚡', sx - 5, sy + 5);
+      }
+      ctx.restore();
+      break;
+    }
+
+    case 'legend-fisherman': {
+      // 5. Pescador: Shimmering ocean whirlpool torrent with 3 leaping koi fishes swimming around
+      const auraR = r + 13 + Math.sin(time * 5) * 3;
+
+      // Swirling Cyan/Azure Tidal Waves
+      ctx.strokeStyle = '#0284c7';
+      ctx.lineWidth = 4;
+      ctx.shadowColor = '#38bdf8';
+      ctx.shadowBlur = 18;
+      ctx.beginPath();
+      ctx.arc(0, 0, auraR, time * 3, time * 3 + Math.PI * 1.6);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#e0f2fe';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, auraR * 0.85, -time * 2, -time * 2 + Math.PI * 1.4);
+      ctx.stroke();
+
+      // 3 Leaping Animated Fish Swimming Around Perimeter
+      for (let f = 0; f < 3; f++) {
+        const fa = time * 3.2 + (f / 3) * Math.PI * 2;
+        const fx = Math.cos(fa) * (auraR + 4);
+        const fy = Math.sin(fa) * (auraR + 4);
+        
+        ctx.save();
+        ctx.translate(fx, fy);
+        ctx.rotate(fa + Math.PI / 2);
+        ctx.fillStyle = '#f59e0b'; // Golden Koi
+        ctx.shadowColor = '#facc15';
+        ctx.shadowBlur = 8;
+        
+        // Fish body
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 7, 3.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Fish tail fin
+        ctx.beginPath();
+        ctx.moveTo(0, 3);
+        ctx.lineTo(-4, 7);
+        ctx.lineTo(4, 7);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+      break;
+    }
+  }
+
   ctx.restore();
 }

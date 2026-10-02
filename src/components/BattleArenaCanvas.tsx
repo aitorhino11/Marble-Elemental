@@ -145,15 +145,19 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
       // Mastery Level Scaling: +5% HP and +5% Attack per level above 1, max level 6!
       const level = Math.min(6, profile.marbleLevels[p.id] || 1);
       const levelMult = 1 + (level - 1) * 0.05;
+      
+      // All Legendary marbles get +25% HP!
+      const isLegendary = p.rarity === 'Legendary';
+      const legendaryHpMult = isLegendary ? 1.25 : 1.0;
       const baseHp = 450;
-      const scaledHp = Math.round(baseHp * levelMult);
+      const scaledHp = Math.round(baseHp * levelMult * legendaryHpMult);
 
       // Max Cooldown assignments as requested
       let maxCd = Math.max(3.6, p.cooldownSeconds * 0.85);
       if (p.id === 'legend-fisherman') maxCd = 8.0;
       else if (p.id === 'elem-poison') maxCd = 7.0;
       else if (p.id === 'chaos-magnet') maxCd = 3.0;
-      else if (p.id === 'mag-mirrorshield') maxCd = 12.0;
+      if (p.id === 'mag-mirrorshield') maxCd = 12.0; // Shield power strictly 12s cooldown!
 
       return {
         id: `marble-${idx}-${p.id}`,
@@ -299,6 +303,38 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
       }
 
       const marbles = marblesRef.current;
+
+      // PRESENTATION STATE: Marbles stay calm at their initial positions without moving or fighting!
+      if (isPresentation) {
+        for (let i = 0; i < marbles.length; i++) {
+          const m = marbles[i];
+          const moveAngle = Math.atan2(m.vy, m.vx);
+
+          ctx.save();
+          drawMarbleSkin(ctx, {
+            x: m.x,
+            y: m.y,
+            radius: m.radius,
+            color: m.color,
+            element: m.power.element,
+            powerId: m.power.id,
+            angle: moveAngle,
+            expression: 'battle',
+            shieldActive: false,
+            isClone: false,
+            isShrouded: false,
+            time: 0
+          });
+          ctx.restore();
+
+          drawMarbleMiniHpBar(ctx, m);
+        }
+
+        ctx.restore(); // Undo screen shake
+        setHudMarbles([...marbles.filter(m => !m.isClone)]);
+        animationFrameRef.current = requestAnimationFrame(gameLoop);
+        return;
+      }
 
       // 3. Update Marbles
       for (let i = marbles.length - 1; i >= 0; i--) {
@@ -489,6 +525,10 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
               : { x: cx, y: cy };
             const targetId = targetMarble ? (targetMarble as MarbleEntity).id : undefined;
 
+            // All Legendary marbles get +15% ability damage!
+            const isLegendary = m.power.rarity === 'Legendary';
+            const abilityDmgMult = isLegendary ? 1.15 : 1.0;
+
             // ========================================================
             // COMPLETE IMPLEMENTATION OF ALL 20 DISTINCT ELEMENTAL POWERS:
             // ========================================================
@@ -624,7 +664,7 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
               }
 
               case 'cosm-blackhole': {
-                // 7. AGUJERO NEGRO CÓSMICO: Absorbe a todos los rivales hacia el vórtice!
+                // 7. AGUJERO NEGRO CÓSMICO (Legendaria): Absorbe a todos los rivales hacia el vórtice (+15% daño legendario)!
                 projectilesRef.current.push({
                   id: Math.random().toString(),
                   type: 'blackhole',
@@ -634,7 +674,7 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
                   vx: 0,
                   vy: 0,
                   radius: 65,
-                  damage: 25,
+                  damage: Math.round(25 * abilityDmgMult),
                   life: 0,
                   maxLife: 4.0,
                   color: '#4c1d95'
@@ -643,7 +683,7 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
               }
 
               case 'mag-warp': {
-                // 8. SALTO CUÁNTICO: Se teletransporta detrás del rival y le asesta un golpe crítico
+                // 8. SALTO CUÁNTICO (Legendaria): Se teletransporta detrás del rival y le asesta un golpe crítico (+15% daño legendario)
                 if (targetMarble) {
                   const target = targetMarble as MarbleEntity;
                   const targetAngle = Math.atan2(target.vy, target.vx);
@@ -651,15 +691,18 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
                   m.y = target.y - Math.sin(targetAngle) * (target.radius + m.radius + 10);
                   m.vx = Math.cos(targetAngle) * 480;
                   m.vy = Math.sin(targetAngle) * 480;
+                  const warpDmg = Math.round(35 * abilityDmgMult);
+                  target.hp = Math.max(0, target.hp - warpDmg);
+                  m.damageDealt += warpDmg;
                   soundManager.playPowerTrigger('magic');
                   popupsRef.current.push({
                     id: Math.random().toString(),
                     x: m.x,
                     y: m.y - 20,
-                    text: '✨ ¡TELETRANSPORTE!',
+                    text: `✨ ¡TELETRANSPORTE! -${warpDmg}`,
                     color: '#ec4899',
                     lifetime: 0,
-                    scale: 1.4,
+                    scale: 1.5,
                     isCrit: true
                   });
                 }
@@ -720,7 +763,7 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
               }
 
               case 'tech-nuke': {
-                // 12. BOMBA NUCLEAR: Detona en una colosal explosión atómica
+                // 12. BOMBA NUCLEAR (Legendaria): Detona en una colosal explosión atómica (+15% daño legendario)
                 projectilesRef.current.push({
                   id: Math.random().toString(),
                   type: 'nuke',
@@ -730,7 +773,7 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
                   vx: 0,
                   vy: 0,
                   radius: 75,
-                  damage: 55,
+                  damage: Math.round(55 * abilityDmgMult),
                   life: 0,
                   maxLife: 2.5,
                   color: '#f97316'
@@ -900,7 +943,7 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
               }
 
               case 'meme-anvil': {
-                // 19. YUNQUE DE 100 TONELADAS: Cae un yunque de dibujos animados encima del rival
+                // 19. YUNQUE DE 100 TONELADAS (Legendaria): Cae un yunque de dibujos animados encima del rival (+15% daño legendario)
                 projectilesRef.current.push({
                   id: Math.random().toString(),
                   type: 'anvil',
@@ -910,7 +953,7 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
                   vx: 0,
                   vy: 420, // falls fast
                   radius: 20,
-                  damage: 45,
+                  damage: Math.round(45 * abilityDmgMult),
                   life: 0,
                   maxLife: 1.5,
                   color: '#64748b',
@@ -930,11 +973,12 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
               }
 
               case 'legend-fisherman': {
-                // 21. PESCADOR (Legendaria): Lanza la caña con anzuelo tenso y estampa al rival contra la pared causándole 30 de daño (8s cooldown)!
+                // 21. PESCADOR (Legendaria): Lanza la caña con anzuelo tenso y estampa al rival contra la pared (+15% daño legendario)!
                 m.cooldown = 8.0;
                 m.maxCooldown = 8.0;
                 if (targetMarble) {
                   const target = targetMarble as MarbleEntity;
+                  const fishDmg = Math.round(30 * abilityDmgMult);
 
                   // Proyectil visual del sedal y anzuelo curvado con tensión
                   projectilesRef.current.push({
@@ -946,7 +990,7 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
                     vx: 0,
                     vy: 0,
                     radius: 20,
-                    damage: 30,
+                    damage: fishDmg,
                     life: 0,
                     maxLife: 1.1,
                     color: '#0284c7',
@@ -967,9 +1011,9 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
                   target.vx = Math.cos(angleFromCenter) * 880;
                   target.vy = Math.sin(angleFromCenter) * 880;
 
-                  // Quita 30 de daño por el golpe contra el muro
-                  target.hp = Math.max(0, target.hp - 30);
-                  m.damageDealt += 30;
+                  // Quita daño por el golpe contra el muro
+                  target.hp = Math.max(0, target.hp - fishDmg);
+                  m.damageDealt += fishDmg;
 
                   traumaRef.current = 0.7;
 
@@ -977,7 +1021,7 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
                     id: Math.random().toString(),
                     x: target.x,
                     y: target.y - 25,
-                    text: '🎣 ¡ENGANCHADO Y ESTAMPADO! -30',
+                    text: `🎣 ¡ENGANCHADO Y ESTAMPADO! -${fishDmg}`,
                     color: '#38bdf8',
                     lifetime: 0,
                     scale: 1.6,
@@ -1608,6 +1652,58 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
             if (isM1Titan) rawDmgToM2 = Math.round(rawDmgToM2 * 1.15);
             if (isM2Titan) rawDmgToM1 = Math.round(rawDmgToM1 * 1.15);
 
+            // All Legendary marbles deal +15% collision damage!
+            if (m1.power.rarity === 'Legendary') rawDmgToM2 = Math.round(rawDmgToM2 * 1.15);
+            if (m2.power.rarity === 'Legendary') rawDmgToM1 = Math.round(rawDmgToM1 * 1.15);
+
+            // CRITICAL HIT MECHANIC (25% chance for ALL marbles):
+            // Deals +50% extra damage, shakes screen, heavy punch sound, and violent knockback!
+            const isCritHit = Math.random() < 0.25;
+            if (isCritHit) {
+              rawDmgToM2 = Math.round(rawDmgToM2 * 1.5);
+              rawDmgToM1 = Math.round(rawDmgToM1 * 1.5);
+
+              // Screen shakes slightly
+              traumaRef.current = Math.min(1.0, traumaRef.current + 0.55);
+
+              // Heavy punch sound effect
+              soundManager.playHeavyPunchCritical();
+
+              // Ball receiving critical impact is propelled away violently to bounce at least 2 times off the walls!
+              const critKnockback = 1080;
+              if (rawDmgToM2 >= rawDmgToM1) {
+                m2.vx = nx * critKnockback;
+                m2.vy = ny * critKnockback;
+                m2.criticalWallBounces = 2; // minimum 2 wall bounces!
+                m1.vx = -nx * (critKnockback * 0.45);
+                m1.vy = -ny * (critKnockback * 0.45);
+              } else {
+                m1.vx = -nx * critKnockback;
+                m1.vy = -ny * critKnockback;
+                m1.criticalWallBounces = 2; // minimum 2 wall bounces!
+                m2.vx = nx * (critKnockback * 0.45);
+                m2.vy = ny * (critKnockback * 0.45);
+              }
+
+              // Top-Tier Visual Critical Hit Animation (Comic shockwave burst & sparks)
+              const midX = (m1.x + m2.x) / 2;
+              const midY = (m1.y + m2.y) / 2;
+              for (let p = 0; p < 20; p++) {
+                const pa = (p / 20) * Math.PI * 2 + (Math.random() - 0.5) * 0.35;
+                const pSpeed = 160 + Math.random() * 240;
+                particlesRef.current.push({
+                  x: midX,
+                  y: midY,
+                  vx: Math.cos(pa) * pSpeed,
+                  vy: Math.sin(pa) * pSpeed,
+                  color: p % 3 === 0 ? '#facc15' : p % 3 === 1 ? '#ef4444' : '#ffffff',
+                  size: 4 + Math.random() * 3.5,
+                  life: 0,
+                  maxLife: 0.65
+                });
+              }
+            }
+
             const dmgToM2 = m2.statusEffect?.type === 'shielded' ? 0 : rawDmgToM2;
             const dmgToM1 = m1.statusEffect?.type === 'shielded' ? 0 : rawDmgToM1;
 
@@ -1618,7 +1714,18 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
             m2.damageDealt += dmgToM1;
 
             // Damage popup
-            if (m1.power.id === 'legend-fisherman' && dmgToM2 > 0) {
+            if (isCritHit) {
+              popupsRef.current.push({
+                id: Math.random().toString(),
+                x: (m1.x + m2.x) / 2,
+                y: (m1.y + m2.y) / 2 - 25,
+                text: `🥊 ¡CRÍTICO! -${dmgToM2 || dmgToM1}`,
+                color: '#facc15',
+                lifetime: 0,
+                scale: 1.8,
+                isCrit: true
+              });
+            } else if (m1.power.id === 'legend-fisherman' && dmgToM2 > 0) {
               popupsRef.current.push({
                 id: Math.random().toString(),
                 x: m2.x,
@@ -2106,6 +2213,19 @@ function handleArenaBoundaryCollision(
   r: number,
   rebound: number = 1.05
 ) {
+  // If propelled by a Critical Hit: maintain violent rebound velocity for at least 2 wall bounces!
+  const hasCritBounces = Boolean(m.criticalWallBounces && m.criticalWallBounces > 0);
+  const activeRebound = hasCritBounces ? rebound * 1.32 : rebound;
+
+  const onBounce = () => {
+    if (m.criticalWallBounces && m.criticalWallBounces > 0) {
+      m.criticalWallBounces--;
+      soundManager.playHeavyImpact(0.9);
+    } else {
+      soundManager.playMarbleClick(0.5);
+    }
+  };
+
   if (shape === 'circle') {
     const dist = Math.hypot(m.x - cx, m.y - cy);
     if (dist + m.radius > r) {
@@ -2116,9 +2236,9 @@ function handleArenaBoundaryCollision(
 
       const dot = m.vx * nx + m.vy * ny;
       if (dot > 0) {
-        m.vx -= (1 + rebound) * dot * nx;
-        m.vy -= (1 + rebound) * dot * ny;
-        soundManager.playMarbleClick(0.5);
+        m.vx -= (1 + activeRebound) * dot * nx;
+        m.vy -= (1 + activeRebound) * dot * ny;
+        onBounce();
       }
     }
   } else if (shape === 'square') {
@@ -2130,22 +2250,22 @@ function handleArenaBoundaryCollision(
 
     if (m.x < minX) {
       m.x = minX;
-      m.vx = Math.abs(m.vx) * rebound;
-      soundManager.playMarbleClick(0.5);
+      m.vx = Math.abs(m.vx) * activeRebound;
+      onBounce();
     } else if (m.x > maxX) {
       m.x = maxX;
-      m.vx = -Math.abs(m.vx) * rebound;
-      soundManager.playMarbleClick(0.5);
+      m.vx = -Math.abs(m.vx) * activeRebound;
+      onBounce();
     }
 
     if (m.y < minY) {
       m.y = minY;
-      m.vy = Math.abs(m.vy) * rebound;
-      soundManager.playMarbleClick(0.5);
+      m.vy = Math.abs(m.vy) * activeRebound;
+      onBounce();
     } else if (m.y > maxY) {
       m.y = maxY;
-      m.vy = -Math.abs(m.vy) * rebound;
-      soundManager.playMarbleClick(0.5);
+      m.vy = -Math.abs(m.vy) * activeRebound;
+      onBounce();
     }
   } else if (shape === 'hexagon') {
     const sideDist = r * Math.cos(Math.PI / 6);
@@ -2162,9 +2282,9 @@ function handleArenaBoundaryCollision(
 
         const dot = m.vx * nx + m.vy * ny;
         if (dot > 0) {
-          m.vx -= (1 + rebound) * dot * nx;
-          m.vy -= (1 + rebound) * dot * ny;
-          soundManager.playMarbleClick(0.5);
+          m.vx -= (1 + activeRebound) * dot * nx;
+          m.vy -= (1 + activeRebound) * dot * ny;
+          onBounce();
         }
       }
     }
@@ -2184,9 +2304,9 @@ function handleArenaBoundaryCollision(
 
         const dot = m.vx * nx + m.vy * ny;
         if (dot > 0) {
-          m.vx -= (1 + rebound) * dot * nx;
-          m.vy -= (1 + rebound) * dot * ny;
-          soundManager.playMarbleClick(0.5);
+          m.vx -= (1 + activeRebound) * dot * nx;
+          m.vy -= (1 + activeRebound) * dot * ny;
+          onBounce();
         }
       }
     }

@@ -81,6 +81,7 @@ export interface MarbleEntity {
   titanTimer?: number;
   fishTimer?: number;
   squashedTimer?: number;
+  criticalWallBounces?: number;
   levelMultiplier?: number;
   originalRadius?: number;
   originalMass?: number;

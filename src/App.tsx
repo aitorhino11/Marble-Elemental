@@ -16,6 +16,8 @@ import { CreatorCodeModal } from './components/CreatorCodeModal';
 import { TikTokClipperModal } from './components/TikTokClipperModal';
 import { SurrenderConfirmModal } from './components/SurrenderConfirmModal';
 import { CompetitiveVsScreen } from './components/CompetitiveVsScreen';
+import { ShopComingSoonView } from './components/ShopComingSoonView';
+import { UserAccountModal } from './components/UserAccountModal';
 import { SupportedLanguage, TRANSLATIONS } from './i18n/translations';
 import { BattleMatchConfig, MarbleEntity, MarblePower } from './types/game';
 import { BotOpponent, IncubatorEggSlot } from './types/competitive';
@@ -41,14 +43,19 @@ import {
   AlertTriangle,
   ArrowLeft,
   Layers,
-  Gift
+  Gift,
+  ShoppingBag,
+  UserPlus
 } from 'lucide-react';
 
-type GameScreen = 'menu' | 'selection' | 'competitive' | 'battle' | 'gdd' | 'powers' | 'gacha' | 'fusion' | 'progression' | 'editor';
+type GameScreen = 'menu' | 'selection' | 'competitive' | 'battle' | 'gdd' | 'powers' | 'gacha' | 'fusion' | 'progression' | 'editor' | 'shop';
 
 export default function App() {
   // Screen state
   const [currentScreen, setCurrentScreen] = useState<GameScreen>('menu');
+
+  // Account modal state
+  const [isAccountModalOpen, setIsAccountModalOpen] = useState<boolean>(false);
 
   // Competitive Mode State
   const [isCompetitiveMatch, setIsCompetitiveMatch] = useState<boolean>(false);
@@ -379,6 +386,25 @@ export default function App() {
                 )}
               </button>
 
+              {/* Tienda (Accesorios Próximamente) */}
+              <button
+                onClick={() => {
+                  soundManager.playMarbleClick(0.5);
+                  setCurrentScreen('shop');
+                }}
+                className={`px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+                  currentScreen === 'shop'
+                    ? 'bg-rose-500/20 text-rose-300 font-bold border border-rose-500/40'
+                    : 'hover:text-white'
+                }`}
+              >
+                <ShoppingBag className="w-3.5 h-3.5 text-rose-400" />
+                <span>Tienda</span>
+                <span className="text-[9px] px-1 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700 font-mono">
+                  Próx.
+                </span>
+              </button>
+
               <button
                 onClick={() => {
                   soundManager.playMarbleClick(0.5);
@@ -470,15 +496,27 @@ export default function App() {
               onRequestSurrender={() => handleRequestSurrender('competitive')}
               currentLang={currentLang}
               isCompetitive={isCompetitiveMatch}
+              isPresentationActive={Boolean(competitiveVsData)}
             />
             {competitiveVsData && (
               <CompetitiveVsScreen
                 playerPower={competitiveVsData.playerPower}
                 botOpponent={competitiveVsData.botOpponent}
-                onComplete={() => setCompetitiveVsData(null)}
+                onComplete={() => {
+                  soundManager.playBattleStartTrumpetFanfare();
+                  setCompetitiveVsData(null);
+                }}
               />
             )}
           </>
+        )}
+
+        {currentScreen === 'shop' && (
+          <ShopComingSoonView
+            onGoToBattle={() => setCurrentScreen('selection')}
+            onGoToGacha={() => setCurrentScreen('gacha')}
+            currentLang={currentLang}
+          />
         )}
 
         {currentScreen === 'gdd' && (
@@ -531,6 +569,41 @@ export default function App() {
           <span className="sm:hidden">Código</span>
         </button>
       </div>
+
+      {/* Bottom Right Floating Account Trigger ("Crear cuenta o iniciar sesión") */}
+      {currentScreen !== 'battle' && (
+        <div className="fixed bottom-4 right-4 z-40">
+          <button
+            onClick={() => {
+              soundManager.playMarbleClick(0.5);
+              setIsAccountModalOpen(true);
+            }}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-slate-900/95 hover:bg-slate-800 text-white border border-amber-500/40 shadow-2xl shadow-slate-950/90 hover:border-amber-400 hover:scale-105 transition-all text-xs font-bold cursor-pointer group backdrop-blur-md"
+            title="Crear cuenta o iniciar sesión para guardar y recuperar tu progreso"
+          >
+            {profile.username ? (
+              <>
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-amber-300 font-mono">@{profile.username}</span>
+                <span className="text-[10px] text-slate-400 hidden sm:inline font-mono">(Guardada)</span>
+              </>
+            ) : (
+              <>
+                <div className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center group-hover:bg-amber-500 group-hover:text-slate-950 transition-colors">
+                  <UserPlus className="w-3.5 h-3.5" />
+                </div>
+                <span>Crear cuenta o iniciar sesión</span>
+              </>
+            )}
+          </button>
+        </div>
+      )}
+
+      {/* User Account Modal */}
+      <UserAccountModal
+        isOpen={isAccountModalOpen}
+        onClose={() => setIsAccountModalOpen(false)}
+      />
 
       {/* Creator Code Modal */}
       <CreatorCodeModal

@@ -193,48 +193,135 @@ export function drawSpectacularPowerAnimation(
     }
 
     case 'cosm-blackhole': {
-      // 7. Singularity Core: Dark matter vortex with violet relativistic accretion ring
-      const radius = 30 + progress * 180;
-      // Event horizon core
-      ctx.fillStyle = '#05010a';
+      // 7. LEGENDARY: Agujero Negro Cósmico - Colossal Gravitational Singularity
+      const radius = 35 + progress * 240;
+      
+      // 1. Spacetime Gravitational Distortion Rings (warping space)
+      for (let w = 0; w < 3; w++) {
+        const wr = radius * (0.6 + w * 0.25);
+        ctx.strokeStyle = w % 2 === 0 ? 'rgba(168, 85, 247, 0.4)' : 'rgba(236, 72, 153, 0.3)';
+        ctx.lineWidth = (6 - w * 1.5) * alpha;
+        ctx.beginPath();
+        ctx.arc(vfx.x, vfx.y, wr, progress * (4 - w), progress * (4 - w) + Math.PI * 1.8);
+        ctx.stroke();
+      }
+
+      // 2. Swirling High-Velocity Accretion Disk (hyper-relativistic neon plasma)
+      const gradAccretion = ctx.createRadialGradient(vfx.x, vfx.y, 10, vfx.x, vfx.y, radius);
+      gradAccretion.addColorStop(0, 'rgba(126, 34, 206, 0.9)');
+      gradAccretion.addColorStop(0.3, 'rgba(168, 85, 247, 0.7)');
+      gradAccretion.addColorStop(0.7, 'rgba(236, 72, 153, 0.4)');
+      gradAccretion.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = gradAccretion;
       ctx.beginPath();
-      ctx.arc(vfx.x, vfx.y, 32 * alpha, 0, Math.PI * 2);
+      ctx.arc(vfx.x, vfx.y, radius, 0, Math.PI * 2);
       ctx.fill();
 
-      // Swirling violet accretion disk
-      ctx.strokeStyle = '#a855f7';
-      ctx.lineWidth = 7 * alpha;
-      ctx.shadowColor = '#c084fc';
-      ctx.shadowBlur = 26;
-
-      ctx.beginPath();
-      ctx.arc(vfx.x, vfx.y, radius, progress * 8, progress * 8 + Math.PI * 1.8);
-      ctx.stroke();
-
-      // Inward pulling matter particles
-      for (let p = 0; p < 8; p++) {
-        const pa = (p / 8) * Math.PI * 2 - progress * 6;
-        const pr = radius * (1.0 - progress * 0.7);
-        ctx.fillStyle = '#f3e8ff';
+      // 3. 12 Spiral Gravitational Inward Suction Arms
+      ctx.strokeStyle = '#c084fc';
+      ctx.lineWidth = 3.5 * alpha;
+      ctx.shadowColor = '#d8b4fe';
+      ctx.shadowBlur = 24;
+      for (let a = 0; a < 12; a++) {
+        const baseA = (a / 12) * Math.PI * 2 + progress * 9;
         ctx.beginPath();
-        ctx.arc(vfx.x + Math.cos(pa) * pr, vfx.y + Math.sin(pa) * pr, 4 * alpha, 0, Math.PI * 2);
+        for (let step = 0; step < 16; step++) {
+          const stepFrac = step / 16;
+          const curR = radius * (1.0 - stepFrac);
+          const curA = baseA + stepFrac * 2.8;
+          const px = vfx.x + Math.cos(curA) * curR;
+          const py = vfx.y + Math.sin(curA) * curR;
+          if (step === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+      }
+
+      // 4. Inward collapsing star matter particles
+      for (let p = 0; p < 16; p++) {
+        const pa = (p / 16) * Math.PI * 2 - progress * 10;
+        const pr = radius * (1.0 - (progress * 1.2) % 1.0);
+        ctx.fillStyle = p % 2 === 0 ? '#fbcfe8' : '#ffffff';
+        ctx.shadowColor = '#ffffff';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.arc(vfx.x + Math.cos(pa) * pr, vfx.y + Math.sin(pa) * pr, (3 + (p % 3)) * alpha, 0, Math.PI * 2);
         ctx.fill();
       }
+
+      // 5. Total Darkness Event Horizon Core with Blinding Photon Ring
+      const coreR = Math.max(14, (36 - progress * 16) * alpha);
+      ctx.fillStyle = '#02010a';
+      ctx.beginPath();
+      ctx.arc(vfx.x, vfx.y, coreR, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Relativistic White Photon Ring
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 4 * alpha;
+      ctx.shadowColor = '#f3e8ff';
+      ctx.shadowBlur = 20;
+      ctx.beginPath();
+      ctx.arc(vfx.x, vfx.y, coreR, 0, Math.PI * 2);
+      ctx.stroke();
       break;
     }
 
+    case 'mag-warp':
     case 'cosm-teleport': {
-      // 8. Quantum Warp: Dimensional cyber glitch rings & particle implosion
-      const radius = 25 + progress * 140;
-      ctx.strokeStyle = '#06b6d4';
-      ctx.lineWidth = 4 * alpha;
-      ctx.shadowColor = '#22d3ee';
-      ctx.shadowBlur = 20;
+      // 8. LEGENDARY: Salto Cuántico - Quantum Reality-Shattering Dimensional Phase
+      const radius = 30 + progress * 180;
 
-      // Multiple square glitch rings
-      ctx.strokeRect(vfx.x - radius, vfx.y - radius, radius * 2, radius * 2);
-      ctx.strokeStyle = '#a855f7';
-      ctx.strokeRect(vfx.x - radius * 0.6, vfx.y - radius * 0.6, radius * 1.2, radius * 1.2);
+      // 1. Shattered Holographic Cyber-Grid Reality Floor
+      ctx.strokeStyle = '#22d3ee';
+      ctx.lineWidth = 2 * alpha;
+      ctx.shadowColor = '#06b6d4';
+      ctx.shadowBlur = 16;
+      for (let g = -3; g <= 3; g++) {
+        ctx.beginPath();
+        ctx.moveTo(vfx.x - radius, vfx.y + g * (radius / 3));
+        ctx.lineTo(vfx.x + radius, vfx.y + g * (radius / 3));
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(vfx.x + g * (radius / 3), vfx.y - radius);
+        ctx.lineTo(vfx.x + g * (radius / 3), vfx.y + radius);
+        ctx.stroke();
+      }
+
+      // 2. Chromatic Aberration Glitch Squares (Cyan & Magenta phase shifts)
+      ctx.save();
+      ctx.strokeStyle = 'rgba(236, 72, 153, 0.85)';
+      ctx.lineWidth = 5 * alpha;
+      ctx.shadowColor = '#ec4899';
+      ctx.shadowBlur = 22;
+      ctx.strokeRect(vfx.x - radius * 0.8 - 4, vfx.y - radius * 0.8 + 3, radius * 1.6, radius * 1.6);
+
+      ctx.strokeStyle = 'rgba(6, 182, 212, 0.85)';
+      ctx.lineWidth = 5 * alpha;
+      ctx.shadowColor = '#06b6d4';
+      ctx.shadowBlur = 22;
+      ctx.strokeRect(vfx.x - radius * 0.8 + 4, vfx.y - radius * 0.8 - 3, radius * 1.6, radius * 1.6);
+      ctx.restore();
+
+      // 3. Tachyon Instantaneous Dimensional Slash Lines
+      for (let s = 0; s < 8; s++) {
+        const sa = (s / 8) * Math.PI * 2 + progress * 6;
+        ctx.strokeStyle = s % 2 === 0 ? '#f472b6' : '#38bdf8';
+        ctx.lineWidth = 3.5 * alpha;
+        ctx.beginPath();
+        ctx.moveTo(vfx.x, vfx.y);
+        ctx.lineTo(vfx.x + Math.cos(sa) * radius * 1.2, vfx.y + Math.sin(sa) * radius * 1.2);
+        ctx.stroke();
+      }
+
+      // 4. Central Quantum Portal Implosion
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowColor = '#e0f2fe';
+      ctx.shadowBlur = 25;
+      ctx.beginPath();
+      ctx.arc(vfx.x, vfx.y, 18 * (1 - progress), 0, Math.PI * 2);
+      ctx.fill();
       break;
     }
 
@@ -311,27 +398,63 @@ export function drawSpectacularPowerAnimation(
     }
 
     case 'tech-nuke': {
-      // 12. Megaton Fallout: Blinding nuclear blast + mushroom cloud fireball
-      const radius = 35 + progress * 240;
-      ctx.fillStyle = 'rgba(239, 68, 68, 0.45)';
+      // 12. LEGENDARY: Bomba Nuclear Megatón - Colossal Thermonuclear Mushroom Cloud & Radioactive Shockwave
+      const radius = 45 + progress * 290;
+
+      // 1. Expanding High-Energy Thermonuclear Blast Wave
+      const nukeGrad = ctx.createRadialGradient(vfx.x, vfx.y, 10, vfx.x, vfx.y, radius);
+      nukeGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+      nukeGrad.addColorStop(0.2, 'rgba(250, 204, 21, 0.85)');
+      nukeGrad.addColorStop(0.5, 'rgba(239, 68, 68, 0.7)');
+      nukeGrad.addColorStop(0.85, 'rgba(168, 85, 247, 0.4)');
+      nukeGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+      ctx.fillStyle = nukeGrad;
       ctx.beginPath();
       ctx.arc(vfx.x, vfx.y, radius, 0, Math.PI * 2);
       ctx.fill();
 
+      // 2. Dual Radioactive Ionization Shockwave Rings
       ctx.strokeStyle = '#facc15';
       ctx.lineWidth = 8 * alpha;
       ctx.shadowColor = '#f97316';
-      ctx.shadowBlur = 30;
-
+      ctx.shadowBlur = 35;
       ctx.beginPath();
-      ctx.arc(vfx.x, vfx.y, radius * 0.75, 0, Math.PI * 2);
+      ctx.arc(vfx.x, vfx.y, radius * 0.9, 0, Math.PI * 2);
       ctx.stroke();
 
-      // Radioactive trefoil hazard flash
-      ctx.fillStyle = '#fef08a';
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 4 * alpha;
       ctx.beginPath();
-      ctx.arc(vfx.x, vfx.y, 22 * alpha, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.arc(vfx.x, vfx.y, radius * 0.65, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // 3. Colossal Rising Mushroom Fireball Billows
+      for (let c = 0; c < 8; c++) {
+        const ca = (c / 8) * Math.PI * 2 + progress * 2;
+        const cr = radius * 0.45;
+        const cx = vfx.x + Math.cos(ca) * cr;
+        const cy = vfx.y - (progress * 60) + Math.sin(ca) * (cr * 0.6);
+        ctx.fillStyle = c % 2 === 0 ? 'rgba(239, 68, 68, 0.75)' : 'rgba(245, 158, 11, 0.75)';
+        ctx.beginPath();
+        ctx.arc(cx, cy, (22 + (c % 3) * 6) * alpha, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 4. Radioactive Trefoil Hazard Core
+      ctx.save();
+      ctx.translate(vfx.x, vfx.y - progress * 40);
+      ctx.rotate(progress * 4);
+      for (let t = 0; t < 3; t++) {
+        const ta = (t / 3) * Math.PI * 2;
+        ctx.fillStyle = '#fef08a';
+        ctx.shadowColor = '#facc15';
+        ctx.shadowBlur = 20;
+        ctx.beginPath();
+        ctx.arc(Math.cos(ta) * 20, Math.sin(ta) * 20, 14 * alpha, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
       break;
     }
 
@@ -518,23 +641,91 @@ export function drawSpectacularPowerAnimation(
     }
 
     case 'meme-anvil': {
-      // 19. 100-Ton Cartoon Drop: Massive anvil falling & slamming with CLANG!
-      const dropY = Math.min(vfx.y, vfx.y - 180 + progress * 320);
-      ctx.fillStyle = '#475569';
-      ctx.fillRect(vfx.x - 32, dropY - 26, 64, 30);
-      ctx.fillStyle = '#1e293b';
-      ctx.fillRect(vfx.x - 45, dropY + 4, 90, 20);
+      // 19. LEGENDARY: Yunque de 100 Toneladas - Colossal Hypersonic Cartoon Anvil Slam & Earthquake Shatter
+      const dropY = Math.min(vfx.y, vfx.y - 240 + progress * 480);
+      
+      // 1. Target Bullseye Warning Decal on Ground
+      const targetR = 40 + Math.sin(progress * 15) * 8;
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 3 * alpha;
+      ctx.shadowColor = '#f43f5e';
+      ctx.shadowBlur = 15;
+      ctx.beginPath();
+      ctx.arc(vfx.x, vfx.y, targetR, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(vfx.x - targetR - 10, vfx.y);
+      ctx.lineTo(vfx.x + targetR + 10, vfx.y);
+      ctx.moveTo(vfx.x, vfx.y - targetR - 10);
+      ctx.lineTo(vfx.x, vfx.y + targetR + 10);
+      ctx.stroke();
 
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 12px "Outfit", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('100 TONS', vfx.x, dropY - 4);
+      // 2. Heavy Steel Anvil Body dropping with fiery re-entry smoke lines
+      ctx.save();
+      ctx.shadowColor = '#000000';
+      ctx.shadowBlur = 18;
 
-      // Impact starburst when landing
-      if (progress > 0.4) {
+      // Fiery re-entry speed lines behind the anvil
+      if (dropY < vfx.y) {
         ctx.strokeStyle = '#f59e0b';
         ctx.lineWidth = 4 * alpha;
-        ctx.strokeRect(vfx.x - 55, vfx.y - 10, 110, 30);
+        for (let l = -30; l <= 30; l += 15) {
+          ctx.beginPath();
+          ctx.moveTo(vfx.x + l, dropY - 20);
+          ctx.lineTo(vfx.x + l, dropY - 80);
+          ctx.stroke();
+        }
+      }
+
+      // Main Anvil Silhouette
+      ctx.fillStyle = '#1e293b';
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(vfx.x - 42, dropY - 30);
+      ctx.lineTo(vfx.x + 55, dropY - 30);
+      ctx.lineTo(vfx.x + 25, dropY);
+      ctx.lineTo(vfx.x + 35, dropY + 28);
+      ctx.lineTo(vfx.x - 35, dropY + 28);
+      ctx.lineTo(vfx.x - 20, dropY);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Stamped "100 TONS" Comic Typography
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '900 13px "Outfit", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('100 TONS', vfx.x - 4, dropY + 4);
+      ctx.restore();
+
+      // 3. Colossal Earthquake Impact upon landing (progress > 0.3)
+      if (progress > 0.3) {
+        const impactProg = (progress - 0.3) / 0.7;
+        const impactR = 30 + impactProg * 190;
+        
+        // Jagged Ground Fracture Cracks
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 5 * (1 - impactProg);
+        ctx.shadowColor = '#facc15';
+        ctx.shadowBlur = 20;
+        for (let c = 0; c < 8; c++) {
+          const ca = (c / 8) * Math.PI * 2;
+          ctx.beginPath();
+          ctx.moveTo(vfx.x, vfx.y);
+          ctx.lineTo(vfx.x + Math.cos(ca) * impactR, vfx.y + Math.sin(ca) * (impactR * 0.6));
+          ctx.stroke();
+        }
+
+        // Flying Comic Gold Stars & Puffs
+        for (let s = 0; s < 6; s++) {
+          const sa = (s / 6) * Math.PI * 2 + impactProg * 4;
+          const sx = vfx.x + Math.cos(sa) * (impactR * 0.8);
+          const sy = vfx.y - 20 + Math.sin(sa) * (impactR * 0.4);
+          ctx.fillStyle = '#facc15';
+          ctx.font = 'bold 16px sans-serif';
+          ctx.fillText('💫', sx - 8, sy);
+        }
       }
       break;
     }
@@ -556,31 +747,59 @@ export function drawSpectacularPowerAnimation(
     }
 
     case 'legend-fisherman': {
-      // 21. Master Angler: Whipping curved fishing line, water ripple waves & golden hook
-      const radius = 25 + progress * 180;
-      ctx.strokeStyle = '#38bdf8';
-      ctx.lineWidth = 5 * alpha;
-      ctx.shadowColor = '#0284c7';
-      ctx.shadowBlur = 24;
+      // 21. LEGENDARY: Pescador - Master Angler Mythic Reel, Tidal Wave & Leaping Trophy Fishes
+      const radius = 35 + progress * 240;
 
-      // Aquatic wave rings
+      // 1. Massive Ocean Whirlpool Tidal Wave Surge
+      const waveGrad = ctx.createRadialGradient(vfx.x, vfx.y, 10, vfx.x, vfx.y, radius);
+      waveGrad.addColorStop(0, 'rgba(14, 165, 233, 0.85)');
+      waveGrad.addColorStop(0.5, 'rgba(2, 132, 199, 0.55)');
+      waveGrad.addColorStop(0.85, 'rgba(56, 189, 248, 0.3)');
+      waveGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+      ctx.fillStyle = waveGrad;
       ctx.beginPath();
-      ctx.ellipse(vfx.x, vfx.y, radius, radius * 0.5, 0, 0, Math.PI * 2);
-      ctx.stroke();
+      ctx.arc(vfx.x, vfx.y, radius, 0, Math.PI * 2);
+      ctx.fill();
 
-      // Whipping line
+      // 2. High-Tension Electric Cyan Fishing Line
       ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 2.5 * alpha;
+      ctx.lineWidth = 3.5 * alpha;
+      ctx.shadowColor = '#38bdf8';
+      ctx.shadowBlur = 18;
       ctx.beginPath();
       ctx.moveTo(vfx.x, vfx.y);
-      ctx.quadraticCurveTo(vfx.x + 40, vfx.y - 60, vfx.x + radius * 0.9, vfx.y);
+      ctx.quadraticCurveTo(vfx.x + 50, vfx.y - 90, vfx.x + radius * 0.95, vfx.y);
       ctx.stroke();
 
-      // Hook spark
+      // 3. Huge Gleaming Golden Treble Hook
+      const hookX = vfx.x + radius * 0.95;
+      const hookY = vfx.y;
       ctx.fillStyle = '#f59e0b';
+      ctx.shadowColor = '#facc15';
+      ctx.shadowBlur = 18;
       ctx.beginPath();
-      ctx.arc(vfx.x + radius * 0.9, vfx.y, 8 * alpha, 0, Math.PI * 2);
+      ctx.arc(hookX, hookY, 12 * alpha, 0, Math.PI * 2);
       ctx.fill();
+
+      // 4. Leaping Aquatic Trophy Fishes jumping in dynamic arcs
+      for (let f = 0; f < 4; f++) {
+        const fa = (f / 4) * Math.PI * 2 + progress * 5;
+        const fr = radius * 0.75;
+        const fx = vfx.x + Math.cos(fa) * fr;
+        const fy = vfx.y + Math.sin(fa) * (fr * 0.55);
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = 'bold 20px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('🐟', fx, fy);
+      }
+
+      // 5. Water Geysers & Foam Splash Rings
+      ctx.strokeStyle = '#e0f2fe';
+      ctx.lineWidth = 4 * alpha;
+      ctx.beginPath();
+      ctx.ellipse(vfx.x, vfx.y, radius * 0.85, radius * 0.45, 0, 0, Math.PI * 2);
+      ctx.stroke();
       break;
     }
 

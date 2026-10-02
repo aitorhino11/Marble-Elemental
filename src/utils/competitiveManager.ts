@@ -3,6 +3,7 @@ import { MARBLE_POWERS } from '../data/powersData';
 import { MarblePower, RarityTier } from '../types/game';
 
 const STORAGE_KEY = 'marble_clash_competitive_profile_v1';
+const ACCOUNTS_STORAGE_KEY = 'marble_clash_user_accounts_v1';
 
 export const RANK_TIERS: RankInfo[] = [
   { tier: 'Bronce', minElo: 0, maxElo: 499, colorHex: '#cd7f32', badgeIcon: 'Shield', division: 'I - III' },
@@ -453,6 +454,113 @@ export class CompetitiveManager {
       difficultyLabel: botElo > 2000 ? 'Élite' : botElo > 1200 ? 'Avanzado' : 'Desafiante',
       avatarColor: randomPower.colorHex
     };
+  }
+
+  /**
+   * Account Management: Register, Login, Recovery across devices
+   */
+  private getSavedAccounts(): Record<string, { username: string; password: string; profile: CompetitivePlayerProfile; createdAt: number }> {
+    if (typeof window === 'undefined') return {};
+    try {
+      const data = localStorage.getItem(ACCOUNTS_STORAGE_KEY);
+      if (data) {
+        return JSON.parse(data);
+      }
+    } catch (e) {
+      console.error('Failed to read saved accounts', e);
+    }
+    return {};
+  }
+
+  private saveAccounts(accounts: Record<string, { username: string; password: string; profile: CompetitivePlayerProfile; createdAt: number }>) {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(accounts));
+    } catch (e) {
+      console.error('Failed to save accounts', e);
+    }
+  }
+
+  public registerAccount(username: string, password: string): { success: boolean; message: string } {
+    const cleanUser = username.trim();
+    if (cleanUser.length < 3) {
+      return { success: false, message: 'El nombre de usuario debe tener al menos 3 caracteres.' };
+    }
+    if (password.length < 4) {
+      return { success: false, message: 'La contraseña debe tener al menos 4 caracteres.' };
+    }
+
+    const accounts = this.getSavedAccounts();
+    const userKey = cleanUser.toLowerCase();
+    if (accounts[userKey]) {
+      return { success: false, message: 'Ese nombre de usuario ya existe. Si es tu cuenta, selecciona Iniciar Sesión.' };
+    }
+
+    // Attach username to current profile and persist
+    this.profile.username = cleanUser;
+    this.profile.accountCreatedAt = Date.now();
+
+    accounts[userKey] = {
+      username: cleanUser,
+      password: password,
+      profile: { ...this.profile },
+      createdAt: Date.now()
+    };
+
+    this.saveAccounts(accounts);
+    this.saveProfile();
+
+    return {
+      success: true,
+      message: `¡Cuenta "${cleanUser}" creada con éxito! Tu progreso actual ha quedado guardado y podrás recuperarlo en cualquier momento.`
+    };
+  }
+
+  public loginAccount(username: string, password: string): { success: boolean; message: string } {
+    const cleanUser = username.trim();
+    const userKey = cleanUser.toLowerCase();
+    const accounts = this.getSavedAccounts();
+
+    const account = accounts[userKey];
+    if (!account) {
+      return { success: false, message: 'No se encontró ninguna cuenta con ese nombre de usuario.' };
+    }
+
+    if (account.password !== password) {
+      return { success: false, message: 'Contraseña incorrecta. Por favor, revísala e inténtalo de nuevo.' };
+    }
+
+    // Load saved profile
+    this.profile = {
+      ...DEFAULT_PROFILE,
+      ...account.profile,
+      username: account.username
+    };
+
+    this.saveProfile();
+    return {
+      success: true,
+      message: `¡Bienvenido de nuevo, ${account.username}! Tu cuenta y progreso han sido sincronizados.`
+    };
+  }
+
+  public logoutAccount() {
+    delete this.profile.username;
+    this.saveProfile();
+  }
+
+  public syncCurrentAccount(): { success: boolean; message: string } {
+    if (!this.profile.username) {
+      return { success: false, message: 'No hay ninguna cuenta conectada.' };
+    }
+    const accounts = this.getSavedAccounts();
+    const userKey = this.profile.username.toLowerCase();
+    if (accounts[userKey]) {
+      accounts[userKey].profile = { ...this.profile };
+      this.saveAccounts(accounts);
+      return { success: true, message: '¡Progreso sincronizado en la nube local con éxito!' };
+    }
+    return { success: false, message: 'No se pudo sincronizar la cuenta.' };
   }
 
   /**

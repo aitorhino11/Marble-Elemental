@@ -40,6 +40,8 @@ export interface CompetitivePlayerProfile {
   marbleDuplicates: Record<string, number>; // extra copies stored for fusion upgrades
   redeemedCodes?: string[]; // creator codes already redeemed
   incubatorEggs: IncubatorEggSlot[];
+  username?: string; // Registered user account name
+  accountCreatedAt?: number;
 }
 
 export interface BotOpponent {

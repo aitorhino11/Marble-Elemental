@@ -409,6 +409,61 @@ class SoundSynthesizer {
     });
   }
 
+  // Heavy Punch Critical Impact Sound ("Puñetazo Fuerte" with bone-cracking punch thud)
+  playHeavyPunchCritical() {
+    if (!this.enabled || this.volume <= 0) return;
+    this.initContext();
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+
+    // 1. Heavy low-frequency punch thud (meat & weight)
+    const oscBody = this.ctx.createOscillator();
+    const gainBody = this.ctx.createGain();
+    oscBody.type = 'triangle';
+    oscBody.frequency.setValueAtTime(160, now);
+    oscBody.frequency.exponentialRampToValueAtTime(32, now + 0.3);
+
+    const bodyVol = Math.min(1.0, 0.9 * this.volume);
+    gainBody.gain.setValueAtTime(bodyVol, now);
+    gainBody.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+
+    oscBody.connect(gainBody);
+    gainBody.connect(this.ctx.destination);
+    oscBody.start(now);
+    oscBody.stop(now + 0.32);
+
+    // 2. Sharp knuckle whip crack (high impact snap)
+    const oscSnap = this.ctx.createOscillator();
+    const gainSnap = this.ctx.createGain();
+    oscSnap.type = 'sawtooth';
+    oscSnap.frequency.setValueAtTime(680, now);
+    oscSnap.frequency.exponentialRampToValueAtTime(90, now + 0.12);
+
+    const snapVol = Math.min(1.0, 0.7 * this.volume);
+    gainSnap.gain.setValueAtTime(snapVol, now);
+    gainSnap.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+
+    oscSnap.connect(gainSnap);
+    gainSnap.connect(this.ctx.destination);
+    oscSnap.start(now);
+    oscSnap.stop(now + 0.14);
+
+    // 3. Sub-bass shockwave rumble
+    const oscSub = this.ctx.createOscillator();
+    const gainSub = this.ctx.createGain();
+    oscSub.type = 'sine';
+    oscSub.frequency.setValueAtTime(85, now + 0.02);
+    oscSub.frequency.exponentialRampToValueAtTime(24, now + 0.38);
+
+    gainSub.gain.setValueAtTime(bodyVol * 0.8, now + 0.02);
+    gainSub.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+
+    oscSub.connect(gainSub);
+    gainSub.connect(this.ctx.destination);
+    oscSub.start(now + 0.02);
+    oscSub.stop(now + 0.4);
+  }
+
   // Knockout Slow-Mo Hit
   playKnockoutHit() {
     if (!this.enabled) return;
