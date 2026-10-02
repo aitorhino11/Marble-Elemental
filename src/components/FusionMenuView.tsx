@@ -66,26 +66,26 @@ export const FusionMenuView: React.FC<FusionMenuViewProps> = ({
     soundManager.playPowerTrigger(power.element);
 
     // Timeline for cinematic evolution
-    // Stage 1: Charging (0 - 1600ms)
+    // Stage 1: Charging (0 - 1500ms)
     setTimeout(() => {
       setFusionStage('colliding');
       soundManager.playMarbleHitSound(power.id, 1.8);
       soundManager.playHeavyImpact(1.4);
-    }, 1600);
+    }, 1500);
 
-    // Stage 2: Ascending (2400ms)
+    // Stage 2: Ascending (2200ms)
     setTimeout(() => {
       setFusionStage('ascending');
       soundManager.playFusionAscension();
 
       // Confetti celebration
       confetti({
-        particleCount: 150,
-        spread: 90,
+        particleCount: 160,
+        spread: 100,
         origin: { y: 0.5 },
         colors: [power.colorHex, '#facc15', '#a855f7', '#38bdf8', '#ffffff']
       });
-    }, 2400);
+    }, 2200);
   };
 
   // Cinematic Canvas 60FPS loop
@@ -108,14 +108,16 @@ export const FusionMenuView: React.FC<FusionMenuViewProps> = ({
       const radius = 48;
 
       if (fusionStage === 'charging') {
-        // Charging phase: Two duplicate orbs approach from opposite sides
-        const dist = Math.max(70, 160 - elapsed * 55);
+        // Charging phase: Two duplicate orbs approach from opposite sides with smooth easing
+        const progress = Math.min(1.0, elapsed / 1.5);
+        const ease = progress * progress;
+        const dist = 140 * (1 - ease) + 30;
 
         // Energy beam connecting them
         ctx.strokeStyle = fusingPower.colorHex;
-        ctx.lineWidth = 3.5 + Math.sin(elapsed * 12) * 1.5;
+        ctx.lineWidth = 4 + Math.sin(elapsed * 12) * 2;
         ctx.shadowColor = fusingPower.colorHex;
-        ctx.shadowBlur = 18;
+        ctx.shadowBlur = 20;
         ctx.beginPath();
         ctx.moveTo(cx - dist, cy);
         ctx.lineTo(cx + dist, cy);
@@ -148,56 +150,89 @@ export const FusionMenuView: React.FC<FusionMenuViewProps> = ({
         });
 
         // Swirling vortex energy particles
-        for (let p = 0; p < 12; p++) {
-          const pa = (p / 12) * Math.PI * 2 + elapsed * 4;
-          const pr = 40 + Math.sin(elapsed * 6 + p) * 20;
+        for (let p = 0; p < 16; p++) {
+          const pa = (p / 16) * Math.PI * 2 + elapsed * 5;
+          const pr = (32 + Math.sin(elapsed * 6 + p) * 22) * (1 - progress * 0.4);
           ctx.fillStyle = p % 2 === 0 ? '#facc15' : fusingPower.colorHex;
           ctx.beginPath();
-          ctx.arc(cx + Math.cos(pa) * pr, cy + Math.sin(pa) * (pr * 0.6), 3, 0, Math.PI * 2);
+          ctx.arc(cx + Math.cos(pa) * pr, cy + Math.sin(pa) * (pr * 0.5), 3, 0, Math.PI * 2);
           ctx.fill();
         }
 
       } else if (fusionStage === 'colliding') {
         // Intense collision flash and expanding shockwave ring
-        const flashAlpha = Math.max(0, 1 - (elapsed - 1.6) * 1.5);
-        ctx.fillStyle = `rgba(255, 255, 255, ${flashAlpha * 0.9})`;
+        const colElapsed = Math.max(0, elapsed - 1.5);
+        const flashAlpha = Math.max(0, 1 - colElapsed * 2.5);
+        ctx.fillStyle = `rgba(255, 255, 255, ${flashAlpha * 0.95})`;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Expanding shockwave rings
+        // Multiple expanding shockwave rings
+        const ringRadius = colElapsed * 260;
         ctx.strokeStyle = fusingPower.colorHex;
-        ctx.lineWidth = 6;
+        ctx.lineWidth = Math.max(1, 8 - colElapsed * 8);
+        ctx.shadowColor = '#facc15';
+        ctx.shadowBlur = 25;
         ctx.beginPath();
-        ctx.arc(cx, cy, (elapsed - 1.6) * 250, 0, Math.PI * 2);
+        ctx.arc(cx, cy, ringRadius, 0, Math.PI * 2);
         ctx.stroke();
 
-      } else if (fusionStage === 'ascending') {
-        // Ascended evolved marble spinning in golden radiance
-        const ascElapsed = elapsed - 2.4;
-        const bob = Math.sin(ascElapsed * 4) * 8;
+        // Secondary gold shockwave
+        ctx.strokeStyle = '#facc15';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(cx, cy, ringRadius * 0.7, 0, Math.PI * 2);
+        ctx.stroke();
 
-        // Radiant rotating halo rays
+        // Shimmering explosion sparks
+        for (let s = 0; s < 14; s++) {
+          const sa = (s / 14) * Math.PI * 2;
+          const spDist = ringRadius * 0.85;
+          ctx.fillStyle = s % 2 === 0 ? '#ffffff' : '#fde047';
+          ctx.beginPath();
+          ctx.arc(cx + Math.cos(sa) * spDist, cy + Math.sin(sa) * spDist, 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+      } else if (fusionStage === 'ascending') {
+        // Ascended evolved marble floating smoothly in golden radiance
+        const ascElapsed = Math.max(0, elapsed - 2.2);
+        const bob = Math.sin(ascElapsed * 3) * 6;
+
+        // Soft celestial background radial glow
+        const glowGrad = ctx.createRadialGradient(cx, cy + bob, 10, cx, cy + bob, 120);
+        glowGrad.addColorStop(0, 'rgba(250, 204, 21, 0.45)');
+        glowGrad.addColorStop(0.5, `${fusingPower.colorHex}25`);
+        glowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = glowGrad;
+        ctx.beginPath();
+        ctx.arc(cx, cy + bob, 120, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Rotating golden light rays with soft edges
         ctx.save();
         ctx.translate(cx, cy + bob);
-        ctx.rotate(ascElapsed * 0.8);
-        for (let r = 0; r < 12; r++) {
-          const ra = (r / 12) * Math.PI * 2;
-          ctx.fillStyle = r % 2 === 0 ? 'rgba(251, 191, 36, 0.25)' : `${fusingPower.colorHex}30`;
+        ctx.rotate(ascElapsed * 0.6);
+        for (let r = 0; r < 8; r++) {
+          const ra = (r / 8) * Math.PI * 2;
+          ctx.fillStyle = 'rgba(251, 191, 36, 0.14)';
           ctx.beginPath();
           ctx.moveTo(0, 0);
-          ctx.arc(0, 0, 160, ra, ra + 0.25);
+          ctx.arc(0, 0, 140, ra - 0.12, ra + 0.12);
           ctx.closePath();
           ctx.fill();
         }
         ctx.restore();
 
-        // Pulsating glowing aura rings
-        const ringR = (ascElapsed * 60) % 120;
-        const ringAlpha = Math.max(0, 1 - ringR / 120);
-        ctx.strokeStyle = `rgba(251, 191, 36, ${ringAlpha})`;
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.arc(cx, cy + bob, ringR, 0, Math.PI * 2);
-        ctx.stroke();
+        // Floating sparkles rising like celestial embers
+        for (let e = 0; e < 12; e++) {
+          const ey = cy + 40 - ((ascElapsed * 45 + e * 18) % 90);
+          const ex = cx + Math.sin(e * 1.7 + ascElapsed * 2) * (radius * 1.1);
+          const sparkAlpha = Math.sin(((cy + 40 - ey) / 90) * Math.PI);
+          ctx.fillStyle = `rgba(253, 224, 71, ${Math.max(0, sparkAlpha)})`;
+          ctx.beginPath();
+          ctx.arc(ex, ey, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
 
         // Ascended Marble with Crown and Sparkles
         drawMarbleSkin(ctx, {
@@ -373,16 +408,18 @@ export const FusionMenuView: React.FC<FusionMenuViewProps> = ({
                 {/* Level Up Stats Preview */}
                 <div className="grid grid-cols-2 gap-2 text-center text-xs font-mono">
                   <div className="p-2 rounded-xl bg-slate-950/60 border border-slate-800">
-                    <span className="text-[10px] text-slate-500 block">Vida Máx</span>
+                    <span className="text-[10px] text-slate-500 block">Vida Extra</span>
                     <span className="font-bold text-emerald-400">
-                      +{currentLevel * 15}% HP
+                      +{Math.min(25, (currentLevel - 1) * 5)}% HP
                     </span>
+                    <span className="text-[9px] text-slate-400 block">+5% por nivel</span>
                   </div>
                   <div className="p-2 rounded-xl bg-slate-950/60 border border-slate-800">
-                    <span className="text-[10px] text-slate-500 block">Fuerza Poder</span>
+                    <span className="text-[10px] text-slate-500 block">Ataque Extra</span>
                     <span className="font-bold text-amber-400">
-                      +{currentLevel * 12}% Daño
+                      +{Math.min(25, (currentLevel - 1) * 5)}% Daño
                     </span>
+                    <span className="text-[9px] text-slate-400 block">+5% por nivel</span>
                   </div>
                 </div>
               </div>
@@ -458,20 +495,22 @@ export const FusionMenuView: React.FC<FusionMenuViewProps> = ({
                 <div className="p-4 rounded-2xl bg-slate-950/90 border border-amber-400/40 space-y-2">
                   <div className="flex items-center justify-center gap-2 text-amber-300 font-mono font-black text-sm">
                     <Crown className="w-4 h-4 fill-amber-400 text-amber-400" />
-                    <span>¡MAESTRÍA NIVEL {newLevelResult} ALCANZADA!</span>
+                    <span>¡MAESTRÍA NIVEL {newLevelResult} / 6 ALCANZADA!</span>
                   </div>
                   <div className="grid grid-cols-2 gap-3 text-xs font-mono pt-1">
                     <div className="p-2 rounded-xl bg-slate-900 border border-slate-800">
                       <span className="text-slate-400 block text-[10px]">Vida Mejorada</span>
                       <span className="font-black text-emerald-400 text-sm">
-                        +{newLevelResult * 15}% HP
+                        +{Math.min(25, (newLevelResult - 1) * 5)}% HP
                       </span>
+                      <span className="text-[9px] text-slate-400 block">+5% por nivel (Máx 6)</span>
                     </div>
                     <div className="p-2 rounded-xl bg-slate-900 border border-slate-800">
-                      <span className="text-slate-400 block text-[10px]">Poder de Choque</span>
+                      <span className="text-slate-400 block text-[10px]">Ataque Mejorado</span>
                       <span className="font-black text-amber-400 text-sm">
-                        +{newLevelResult * 12}% Daño
+                        +{Math.min(25, (newLevelResult - 1) * 5)}% Daño
                       </span>
+                      <span className="text-[9px] text-slate-400 block">+5% por nivel (Máx 6)</span>
                     </div>
                   </div>
                 </div>

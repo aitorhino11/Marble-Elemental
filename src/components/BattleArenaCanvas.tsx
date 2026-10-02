@@ -6,6 +6,8 @@ import { soundManager } from '../utils/audioSystem';
 import { SupportedLanguage, TRANSLATIONS } from '../i18n/translations';
 import { drawUniqueMapDecorations } from '../utils/mapRenderer';
 import { drawMarbleSkin } from '../utils/marbleSkinRenderer';
+import { drawSpectacularPowerAnimation, ActivePowerVfx } from '../utils/powerVfxRenderer';
+import { competitiveManager } from '../utils/competitiveManager';
 import { 
   Zap, 
   RotateCcw, 
@@ -32,6 +34,7 @@ interface BattleArenaCanvasProps {
   onBackToMenu: () => void;
   currentLang: SupportedLanguage;
   isCompetitive?: boolean;
+  isPresentationActive?: boolean;
   onRequestSurrender?: () => void;
 }
 
@@ -41,10 +44,19 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
   onBackToMenu,
   currentLang,
   isCompetitive = false,
+  isPresentationActive = false,
   onRequestSurrender
 }) => {
   const t = TRANSLATIONS[currentLang];
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  const isPresentationActiveRef = useRef(Boolean(isPresentationActive));
+  useEffect(() => {
+    isPresentationActiveRef.current = Boolean(isPresentationActive);
+    if (!isPresentationActive) {
+      lastTimeRef.current = performance.now();
+    }
+  }, [isPresentationActive]);
 
   const selectedMap = MAP_THEMES.find(m => m.id === config.mapThemeId) || MAP_THEMES[0];
   const isComp = Boolean(isCompetitive);
@@ -71,6 +83,7 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
   const projectilesRef = useRef<PowerProjectile[]>([]);
   const popupsRef = useRef<DamagePopup[]>([]);
   const particlesRef = useRef<Particle[]>([]);
+  const powerVfxRef = useRef<ActivePowerVfx[]>([]);
   const traumaRef = useRef<number>(0);
   const matchFinishedRef = useRef<boolean>(false);
   const animationFrameRef = useRef<number | null>(null);
@@ -107,7 +120,10 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
     projectilesRef.current = [];
     popupsRef.current = [];
     particlesRef.current = [];
+    powerVfxRef.current = [];
     traumaRef.current = 0;
+
+    const profile = competitiveManager.getProfile();
 
     const fighters = config.fighters;
     const count = fighters.length;
@@ -126,6 +142,19 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
         team = idx < count / 2 ? 'red' : 'blue';
       }
 
+      // Mastery Level Scaling: +5% HP and +5% Attack per level above 1, max level 6!
+      const level = Math.min(6, profile.marbleLevels[p.id] || 1);
+      const levelMult = 1 + (level - 1) * 0.05;
+      const baseHp = 450;
+      const scaledHp = Math.round(baseHp * levelMult);
+
+      // Max Cooldown assignments as requested
+      let maxCd = Math.max(3.6, p.cooldownSeconds * 0.85);
+      if (p.id === 'legend-fisherman') maxCd = 8.0;
+      else if (p.id === 'elem-poison') maxCd = 7.0;
+      else if (p.id === 'chaos-magnet') maxCd = 3.0;
+      else if (p.id === 'mag-mirrorshield') maxCd = 12.0;
+
       return {
         id: `marble-${idx}-${p.id}`,
         name: getPowerDisplayName(p, currentLang),
@@ -137,12 +166,13 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
         originalRadius: p.id === 'chaos-growth' ? Math.round(baseRadius * 1.25) : baseRadius,
         mass: p.id === 'chaos-growth' ? 1.5 : 1.0,
         originalMass: p.id === 'chaos-growth' ? 1.5 : 1.0,
-        hp: 450, // Starting healthy pool of 450 HP for balanced 15s - 60s matches
-        maxHp: 450,
+        hp: scaledHp,
+        maxHp: scaledHp,
+        levelMultiplier: levelMult,
         energy: 0,
         maxEnergy: 100,
         cooldown: Math.random() * 2.0 + 1.2,
-        maxCooldown: p.id === 'legend-fisherman' ? 8.0 : p.id === 'elem-poison' ? 7.0 : Math.max(3.6, p.cooldownSeconds * 0.85),
+        maxCooldown: maxCd,
         color: p.colorHex,
         power: p,
         isAlive: true,
@@ -182,8 +212,11 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
       const rawDt = Math.min((currentTime - lastTimeRef.current) / 1000, 0.05);
       lastTimeRef.current = currentTime;
 
-      const dt = rawDt * (config.gameSpeed || 1.0);
-      battleDurationRef.current += dt;
+      const isPresentation = Boolean(isPresentationActiveRef.current);
+      const dt = isPresentation ? 0 : rawDt * (config.gameSpeed || 1.0);
+      if (!isPresentation) {
+        battleDurationRef.current += dt;
+      }
 
       const totalTime = battleDurationRef.current;
       const curSecs = Math.floor(totalTime);
@@ -303,6 +336,14 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
           }
         }
 
+        // Anvil squashed timer (aplastada por 1 segundo como un acordeón)
+        if (m.squashedTimer && m.squashedTimer > 0) {
+          m.squashedTimer -= dt;
+          if (m.squashedTimer <= 0) {
+            m.squashedTimer = undefined;
+          }
+        }
+
         // Status effect countdown & Poison DoT ticks
         if (m.statusEffect) {
           m.statusEffect.duration -= dt;
@@ -396,6 +437,23 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
             m.cooldown = m.maxCooldown;
             soundManager.playPowerTrigger(m.power.element);
             traumaRef.current = Math.min(1.0, traumaRef.current + 0.25);
+
+            // Trigger spectacular combat animation for this power!
+            powerVfxRef.current.push({
+              id: Math.random().toString(),
+              sourceMarbleId: m.id,
+              powerId: m.power.id,
+              element: m.power.element,
+              x: m.x,
+              y: m.y,
+              vx: m.vx,
+              vy: m.vy,
+              color: m.color,
+              life: 0,
+              maxLife: 1.3,
+              name: getPowerDisplayName(m.power, currentLang),
+              radius: m.radius
+            });
 
             // Floating Power Banner
             popupsRef.current.push({
@@ -632,8 +690,10 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
               }
 
               case 'mag-mirrorshield': {
-                // 10. ESCUDO PRISMÁTICO: Barrera que absorbe daño al 100%
-                m.statusEffect = { type: 'shielded', duration: 4.0 };
+                // 10. ESCUDO PRISMÁTICO: Barrera que absorbe daño al 100% durante 5 segundos con 12s cooldown
+                m.cooldown = 12.0;
+                m.maxCooldown = 12.0;
+                m.statusEffect = { type: 'shielded', duration: 5.0 };
                 break;
               }
 
@@ -775,15 +835,58 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
               }
 
               case 'chaos-magnet': {
-                // 17. IMÁN VORAZ: Succiona a los rivales magnéticamente
-                marbles.forEach(other => {
-                  if (other.id !== m.id && other.isAlive && (!isTeamMode || other.team !== m.team)) {
-                    const pullA = Math.atan2(m.y - other.y, m.x - other.x);
-                    other.vx += Math.cos(pullA) * 260;
-                    other.vy += Math.sin(pullA) * 260;
-                    other.hp = Math.max(0, other.hp - 18);
-                  }
+                // 17. IMÁN VORAZ DE MONEDAS: Dispara monedas giratorias (Cobre 10, Plata 15, Oro 25) con 3s de cooldown!
+                m.cooldown = 3.0;
+                m.maxCooldown = 3.0;
+
+                const roll = Math.random();
+                let coinDamage = 10;
+                let coinRadius = 11;
+                let coinColor = '#d97706';
+                let coinType: 'copper' | 'silver' | 'gold' = 'copper';
+
+                if (roll < 0.45) {
+                  // Cobre pequeña (10 de daño)
+                  coinDamage = 10;
+                  coinRadius = 11;
+                  coinColor = '#d97706';
+                  coinType = 'copper';
+                } else if (roll < 0.80) {
+                  // Plata mediana (15 de daño)
+                  coinDamage = 15;
+                  coinRadius = 14;
+                  coinColor = '#cbd5e1';
+                  coinType = 'silver';
+                } else {
+                  // Oro grande (25 de daño)
+                  coinDamage = 25;
+                  coinRadius = 17;
+                  coinColor = '#facc15';
+                  coinType = 'gold';
+                }
+
+                // Dispara moneda en dirección al rival
+                const coinAngle = Math.atan2(targetPos.y - m.y, targetPos.x - m.x);
+                const coinSpeed = 460;
+
+                projectilesRef.current.push({
+                  id: Math.random().toString(),
+                  type: 'coin',
+                  ownerId: m.id,
+                  x: m.x + Math.cos(coinAngle) * (m.radius + coinRadius + 4),
+                  y: m.y + Math.sin(coinAngle) * (m.radius + coinRadius + 4),
+                  vx: Math.cos(coinAngle) * coinSpeed,
+                  vy: Math.sin(coinAngle) * coinSpeed,
+                  radius: coinRadius,
+                  damage: coinDamage,
+                  life: 0,
+                  maxLife: 3.2,
+                  color: coinColor,
+                  targetId,
+                  extra: { coinType, spin: 0 }
                 });
+
+                soundManager.playMarbleClick(1.4);
                 break;
               }
 
@@ -975,6 +1078,14 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
         }
 
         // Draw marble with authentic unique power skin
+        ctx.save();
+        const isSquashed = Boolean(m.squashedTimer && m.squashedTimer > 0);
+        if (isSquashed) {
+          ctx.translate(m.x, m.y);
+          ctx.scale(1.45, 0.42);
+          ctx.translate(-m.x, -m.y);
+        }
+
         drawMarbleSkin(ctx, {
           x: m.x,
           y: m.y,
@@ -983,16 +1094,37 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
           element: m.power.element,
           powerId: m.power.id,
           angle: moveAngle,
-          expression,
+          expression: isSquashed ? 'stunned' : expression,
           shieldActive: m.statusEffect?.type === 'shielded',
           isClone: Boolean(m.isClone),
           isShrouded: false,
           time: totalTime
         });
+        ctx.restore();
+
+        // If squashed by the anvil, render comic dizzy stars orbiting above head!
+        if (isSquashed) {
+          for (let s = 0; s < 3; s++) {
+            const sa = totalTime * 6 + (s / 3) * Math.PI * 2;
+            const sx = m.x + Math.cos(sa) * (m.radius * 1.25);
+            const sy = m.y - m.radius * 0.6 + Math.sin(sa) * 6;
+            ctx.fillStyle = '#facc15';
+            ctx.font = 'bold 12px sans-serif';
+            ctx.fillText('💫', sx - 6, sy + 4);
+          }
+        }
 
         // Floating HP bar above marble
         drawMarbleMiniHpBar(ctx, m);
       }
+
+      // 4.5. UPDATE & DRAW ACTIVE POWER VFX (Combat power animations for all marbles!)
+      powerVfxRef.current = powerVfxRef.current.filter(vfx => {
+        vfx.life += dt;
+        if (vfx.life >= vfx.maxLife) return false;
+        drawSpectacularPowerAnimation(ctx, vfx, arenaWidth, arenaHeight);
+        return true;
+      });
 
       // 5. UPDATE & DRAW ACTIVE PROJECTILES (Fireballs, Black Holes, Tornados, Boulders, Anvils, Mines)
       projectilesRef.current = projectilesRef.current.filter(proj => {
@@ -1145,16 +1277,34 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
               if (d < proj.radius + m.radius) {
                 // Detonate mine!
                 m.hp = Math.max(0, m.hp - proj.damage);
-                soundManager.playHeavyImpact(1.0);
-                traumaRef.current = 0.6;
+                soundManager.playHeavyImpact(1.3);
+                soundManager.playPowerTrigger('fire');
+                traumaRef.current = 0.75;
+
+                // Fiery shrapnel explosion particles
+                for (let p = 0; p < 24; p++) {
+                  const pa = Math.random() * Math.PI * 2;
+                  const pSpeed = 160 + Math.random() * 260;
+                  particlesRef.current.push({
+                    x: proj.x,
+                    y: proj.y,
+                    vx: Math.cos(pa) * pSpeed,
+                    vy: Math.sin(pa) * pSpeed,
+                    color: Math.random() < 0.4 ? '#ef4444' : Math.random() < 0.7 ? '#f59e0b' : '#fef08a',
+                    size: Math.random() * 4 + 2,
+                    life: 0,
+                    maxLife: 0.65
+                  });
+                }
+
                 popupsRef.current.push({
                   id: Math.random().toString(),
                   x: proj.x,
-                  y: proj.y - 15,
-                  text: '💥 ¡MINA!',
+                  y: proj.y - 20,
+                  text: '💥 ¡MINA DEVASTADORA!',
                   color: '#f59e0b',
                   lifetime: 0,
-                  scale: 1.4,
+                  scale: 1.5,
                   isCrit: true
                 });
                 return false;
@@ -1197,13 +1347,14 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
           drawActiveProjectile(ctx, proj, totalTime);
           const groundY = proj.extra?.groundY || cy;
           if (proj.y >= groundY) {
-            // Anvil lands with loud CLANG!
-            soundManager.playHeavyImpact(1.2);
-            traumaRef.current = 0.8;
+            // Anvil lands with loud comic CLANG!
+            soundManager.playAnvilClank();
+            traumaRef.current = 0.85;
             const target = marbles.find(m => m.id === proj.targetId);
             if (target && target.isAlive) {
               target.hp = Math.max(0, target.hp - proj.damage);
               target.statusEffect = { type: 'emp', duration: 2.0 }; // Stunned
+              target.squashedTimer = 1.0; // Aplastada por 1 segundo como un acordeón!
               popupsRef.current.push({
                 id: Math.random().toString(),
                 x: target.x,
@@ -1211,11 +1362,72 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
                 text: '🔨 ¡APLASTADO!',
                 color: '#94a3b8',
                 lifetime: 0,
-                scale: 1.5,
+                scale: 1.6,
                 isCrit: true
               });
             }
             return false;
+          }
+          return true;
+        }
+
+        // COIN PROJECTILE BEHAVIOR (Imán de Monedas: Cobre 10, Plata 15, Oro 25)
+        if (proj.type === 'coin') {
+          proj.x += proj.vx * dt;
+          proj.y += proj.vy * dt;
+          drawActiveProjectile(ctx, proj, totalTime);
+
+          for (let m of marbles) {
+            if (m.id !== proj.ownerId && m.isAlive) {
+              if (isTeamMode && m.team && marbles.find(o => o.id === proj.ownerId)?.team === m.team) {
+                continue;
+              }
+              const dist = Math.hypot(m.x - proj.x, m.y - proj.y);
+              if (dist < proj.radius + m.radius) {
+                if (m.statusEffect?.type !== 'shielded') {
+                  const finalDmg = proj.damage;
+                  m.hp = Math.max(0, m.hp - finalDmg);
+                  const owner = marbles.find(o => o.id === proj.ownerId);
+                  if (owner) owner.damageDealt += finalDmg;
+
+                  soundManager.playMarbleClick(1.5);
+
+                  const coinLabels: Record<string, { text: string; color: string }> = {
+                    copper: { text: '🪙 -10 COBRE', color: '#d97706' },
+                    silver: { text: '🥈 -15 PLATA', color: '#cbd5e1' },
+                    gold: { text: '🥇 -25 ORO (¡JACKPOT!)', color: '#facc15' }
+                  };
+                  const coinMeta = coinLabels[proj.extra?.coinType] || { text: `-${finalDmg}`, color: '#facc15' };
+
+                  popupsRef.current.push({
+                    id: Math.random().toString(),
+                    x: m.x,
+                    y: m.y - 20,
+                    text: coinMeta.text,
+                    color: coinMeta.color,
+                    lifetime: 0,
+                    scale: 1.4,
+                    isCrit: proj.extra?.coinType === 'gold'
+                  });
+
+                  // Gold sparkle particles on hit
+                  for (let p = 0; p < 8; p++) {
+                    const pa = Math.random() * Math.PI * 2;
+                    particlesRef.current.push({
+                      x: proj.x,
+                      y: proj.y,
+                      vx: Math.cos(pa) * (60 + Math.random() * 80),
+                      vy: Math.sin(pa) * (60 + Math.random() * 80),
+                      color: coinMeta.color,
+                      size: 3,
+                      life: 0,
+                      maxLife: 0.6
+                    });
+                  }
+                }
+                return false; // Coin consumed on hit!
+              }
+            }
           }
           return true;
         }
@@ -1383,8 +1595,18 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
             const baseDamage = Math.max(6, Math.round(7 + (impactSpeed / 75) * m1.mass));
             
             // Pescador quita 30 de daño al chocar contra otra bola!
-            const rawDmgToM2 = m1.power.id === 'legend-fisherman' ? 30 : Math.round(baseDamage * shatterBonusM2);
-            const rawDmgToM1 = m2.power.id === 'legend-fisherman' ? 30 : Math.round(baseDamage * shatterBonusM1);
+            let rawDmgToM2 = m1.power.id === 'legend-fisherman' ? 30 : Math.round(baseDamage * shatterBonusM2);
+            let rawDmgToM1 = m2.power.id === 'legend-fisherman' ? 30 : Math.round(baseDamage * shatterBonusM1);
+
+            // Nivel de maestría por fusión: +5% de ataque por nivel superior a 1
+            rawDmgToM2 = Math.round(rawDmgToM2 * (m1.levelMultiplier || 1.0));
+            rawDmgToM1 = Math.round(rawDmgToM1 * (m2.levelMultiplier || 1.0));
+
+            // Canica Titán: Cuando se hace grande quita un 15% más de daño como se solicitó!
+            const isM1Titan = Boolean(m1.titanTimer && m1.titanTimer > 0);
+            const isM2Titan = Boolean(m2.titanTimer && m2.titanTimer > 0);
+            if (isM1Titan) rawDmgToM2 = Math.round(rawDmgToM2 * 1.15);
+            if (isM2Titan) rawDmgToM1 = Math.round(rawDmgToM1 * 1.15);
 
             const dmgToM2 = m2.statusEffect?.type === 'shielded' ? 0 : rawDmgToM2;
             const dmgToM1 = m1.statusEffect?.type === 'shielded' ? 0 : rawDmgToM1;
@@ -2118,22 +2340,83 @@ function drawActiveProjectile(
     ctx.stroke();
 
   } else if (proj.type === 'landmine') {
-    // Blinking proximity mine
-    const blink = Math.sin(time * 12) > 0;
-    ctx.fillStyle = '#1e293b';
-    ctx.strokeStyle = blink ? '#ef4444' : '#f59e0b';
-    ctx.lineWidth = 2.5;
-    ctx.shadowColor = '#ef4444';
-    ctx.shadowBlur = blink ? 12 : 4;
+    // Rediseño futurista: Mina hexagonal con retícula láser giratoria y tripwires
+    const blink = Math.sin(time * 14) > 0;
+    ctx.shadowColor = blink ? '#ef4444' : '#06b6d4';
+    ctx.shadowBlur = blink ? 20 : 8;
+
+    // Retícula láser exterior giratoria
+    ctx.strokeStyle = blink ? 'rgba(239, 68, 68, 0.8)' : 'rgba(56, 189, 248, 0.6)';
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.arc(0, 0, proj.radius, 0, Math.PI * 2);
+    ctx.arc(0, 0, proj.radius * 1.35, time * 3, time * 3 + Math.PI * 1.5);
+    ctx.stroke();
+
+    // Cuerpo hexagonal blindado
+    ctx.fillStyle = '#0f172a';
+    ctx.strokeStyle = blink ? '#f43f5e' : '#38bdf8';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    for (let h = 0; h < 6; h++) {
+      const ha = (h / 6) * Math.PI * 2;
+      const hx = Math.cos(ha) * proj.radius;
+      const hy = Math.sin(ha) * proj.radius;
+      if (h === 0) ctx.moveTo(hx, hy);
+      else ctx.lineTo(hx, hy);
+    }
+    ctx.closePath();
     ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = blink ? '#ef4444' : '#334155';
+    // Núcleo reactor parpadeante
+    ctx.fillStyle = blink ? '#ff2222' : '#0284c7';
     ctx.beginPath();
-    ctx.arc(0, 0, proj.radius * 0.4, 0, Math.PI * 2);
+    ctx.arc(0, 0, proj.radius * 0.42, 0, Math.PI * 2);
     ctx.fill();
+
+    // Tripwires láser hacia afuera
+    for (let t = 0; t < 3; t++) {
+      const ta = (t / 3) * Math.PI * 2 + time * 2;
+      ctx.strokeStyle = blink ? 'rgba(239, 68, 68, 0.7)' : 'rgba(14, 165, 233, 0.5)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(ta) * (proj.radius * 2.2), Math.sin(ta) * (proj.radius * 2.2));
+      ctx.stroke();
+    }
+
+  } else if (proj.type === 'coin') {
+    // Moneda giratoria 3D de Cobre, Plata u Oro con relieve metálico y brillo
+    const spin = time * 9;
+    const squish = Math.max(0.18, Math.abs(Math.sin(spin)));
+    ctx.rotate(time * 2.5);
+
+    ctx.save();
+    ctx.scale(squish, 1);
+    ctx.shadowColor = proj.color;
+    ctx.shadowBlur = 14;
+
+    // Borde exterior
+    ctx.fillStyle = proj.color;
+    ctx.beginPath();
+    ctx.arc(0, 0, proj.radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Bisel interior
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, proj.radius * 0.76, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Grabado interior
+    ctx.fillStyle = '#1e293b';
+    ctx.font = `bold ${Math.round(proj.radius * 0.95)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('★', 0, 0);
+
+    ctx.restore();
 
   } else if (proj.type === 'anvil') {
     // 100-TON Cartoon Anvil stamped

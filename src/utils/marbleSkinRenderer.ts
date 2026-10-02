@@ -199,10 +199,8 @@ export function drawMarbleSkin(
     drawGoldenCrown(ctx, radius, time);
   }
 
-  // 11. Custom Gear for Legend Fisherman (Hat, Curved Rod, Reel & Hook)
-  if (powerId === 'legend-fisherman') {
-    drawFishermanGear(ctx, radius, angle, time);
-  }
+  // 11. Custom Unique Gear, Weapons, Hats, Horns, Goggles & Crests for ALL 21 Marbles!
+  drawUniqueMarbleGear(ctx, radius, powerId, color, angle, time);
 
   ctx.restore();
 }
@@ -411,7 +409,6 @@ function drawElementalTexture(
         // Oceanic ripples & golden koi scales
         ctx.strokeStyle = 'rgba(56, 189, 248, 0.7)';
         ctx.lineWidth = 1.8;
-        // Water ripples
         for (let rip = 0; rip < 3; rip++) {
           const ripY = -r * 0.3 + rip * r * 0.3;
           ctx.beginPath();
@@ -419,7 +416,6 @@ function drawElementalTexture(
           ctx.quadraticCurveTo(0, ripY - 6, r * 0.6, ripY);
           ctx.stroke();
         }
-        // Tiny golden koi fish emblem
         ctx.fillStyle = '#f59e0b';
         ctx.beginPath();
         ctx.ellipse(0, r * 0.25, 7, 4, 0, 0, Math.PI * 2);
@@ -430,6 +426,59 @@ function drawElementalTexture(
         ctx.lineTo(12, r * 0.25 + 4);
         ctx.closePath();
         ctx.fill();
+        break;
+      }
+
+      if (powerId === 'chaos-magnet') {
+        // Gold coins embedded in sphere body
+        ctx.fillStyle = '#facc15';
+        ctx.strokeStyle = '#b45309';
+        ctx.lineWidth = 1;
+        [-1, 1].forEach(s => {
+          ctx.beginPath();
+          ctx.arc(s * r * 0.45, r * 0.35, 6, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        });
+        break;
+      }
+
+      if (powerId === 'meme-anvil') {
+        // Riveted iron plates
+        ctx.strokeStyle = '#64748b';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.6, -r * 0.2);
+        ctx.lineTo(r * 0.6, -r * 0.2);
+        ctx.moveTo(-r * 0.6, r * 0.2);
+        ctx.lineTo(r * 0.6, r * 0.2);
+        ctx.stroke();
+        ctx.fillStyle = '#cbd5e1';
+        [-0.4, 0, 0.4].forEach(xPos => {
+          ctx.beginPath();
+          ctx.arc(xPos * r, -r * 0.2, 1.8, 0, Math.PI * 2);
+          ctx.arc(xPos * r, r * 0.2, 1.8, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        break;
+      }
+
+      if (powerId === 'meme-speed') {
+        // Racing stripes & sonic lightning chevrons
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(-r * 0.15, -r * 0.9, r * 0.3, r * 1.8);
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(-r * 0.05, -r * 0.9, r * 0.1, r * 1.8);
+        break;
+      }
+
+      if (powerId === 'chaos-tornado') {
+        // Pinball arcade arrows & whirl
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 0.5, 0, Math.PI * 1.5);
+        ctx.stroke();
         break;
       }
 
@@ -786,6 +835,590 @@ function darkenColor(hex: string, factor: number = 0.5): string {
   const dg = Math.floor(g * factor);
   const db = Math.floor(b * factor);
   return `rgb(${dr}, ${dg}, ${db})`;
+}
+
+/**
+ * Unique Gear, Hats, Horns, Goggles, Spoilers, Weapons & Accessories for ALL 21 Marbles!
+ * Makes every marble instantly recognizable and beautifully distinct in menus and battles.
+ */
+function drawUniqueMarbleGear(
+  ctx: CanvasRenderingContext2D,
+  r: number,
+  powerId: string,
+  baseColor: string,
+  angle: number,
+  time: number
+) {
+  ctx.save();
+
+  switch (powerId) {
+    case 'elem-fire': {
+      // 1. Blazing Flame Mohawk Crest
+      ctx.save();
+      ctx.translate(0, -r * 0.78);
+      const flameCount = 5;
+      for (let i = 0; i < flameCount; i++) {
+        const offX = ((i - 2) / 2) * (r * 0.45);
+        const height = r * (0.65 - Math.abs(i - 2) * 0.12) + Math.sin(time * 8 + i) * 4;
+        ctx.fillStyle = i === 2 ? '#facc15' : i % 2 === 0 ? '#ea580c' : '#dc2626';
+        ctx.beginPath();
+        ctx.moveTo(offX - 4, 0);
+        ctx.quadraticCurveTo(offX + Math.sin(time * 6 + i) * 4, -height * 0.6, offX, -height);
+        ctx.quadraticCurveTo(offX + 4, -height * 0.5, offX + 4, 0);
+        ctx.fill();
+      }
+      ctx.restore();
+      break;
+    }
+
+    case 'elem-ice': {
+      // 2. Glacial Crystalline Ice Tiara / Spikes
+      ctx.save();
+      ctx.translate(0, -r * 0.82);
+      for (let s = -2; s <= 2; s++) {
+        const sx = s * (r * 0.24);
+        const sh = r * (0.55 - Math.abs(s) * 0.1);
+        ctx.fillStyle = 'rgba(224, 242, 254, 0.9)';
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(sx - 3.5, 0);
+        ctx.lineTo(sx, -sh);
+        ctx.lineTo(sx + 3.5, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      }
+      // Ice crystal diamond glint
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(0, -r * 0.4, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      break;
+    }
+
+    case 'elem-thunder':
+    case 'elem-lightning': {
+      // 3. Dual High-Voltage Lightning Antenna Horns
+      ctx.save();
+      ctx.translate(0, -r * 0.85);
+      [-1, 1].forEach(side => {
+        ctx.strokeStyle = '#facc15';
+        ctx.lineWidth = 2.5;
+        ctx.shadowColor = '#fef08a';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.moveTo(side * (r * 0.28), 0);
+        ctx.lineTo(side * (r * 0.38), -r * 0.25);
+        ctx.lineTo(side * (r * 0.26), -r * 0.28);
+        ctx.lineTo(side * (r * 0.42), -r * 0.55);
+        ctx.stroke();
+      });
+      // Spark discharge between antennae
+      if (Math.sin(time * 12) > 0.4) {
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.42, -r * 0.55);
+        ctx.lineTo(0, -r * 0.62);
+        ctx.lineTo(r * 0.42, -r * 0.55);
+        ctx.stroke();
+      }
+      ctx.restore();
+      break;
+    }
+
+    case 'elem-earth': {
+      // 4. Heavy Mossy Granite Brow & Floating Runic Pebbles
+      ctx.save();
+      ctx.translate(0, -r * 0.6);
+      ctx.fillStyle = '#57534e';
+      ctx.strokeStyle = '#292524';
+      ctx.lineWidth = 1.5;
+      // Stone brow slab
+      ctx.beginPath();
+      ctx.roundRect(-r * 0.65, -r * 0.15, r * 1.3, r * 0.3, 4);
+      ctx.fill();
+      ctx.stroke();
+      // Green moss patches
+      ctx.fillStyle = '#4ade80';
+      ctx.fillRect(-r * 0.4, -r * 0.15, r * 0.25, 3);
+      ctx.fillRect(r * 0.15, -r * 0.15, r * 0.25, 3);
+      // Orbiting runic pebble
+      const pa = time * 2.5;
+      ctx.fillStyle = '#d97706';
+      ctx.beginPath();
+      ctx.arc(Math.cos(pa) * (r * 1.25), Math.sin(pa) * (r * 0.5), 3.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      break;
+    }
+
+    case 'elem-wind': {
+      // 5. Steampunk Aviator Flight Goggles & Wings
+      ctx.save();
+      ctx.translate(0, -r * 0.35);
+      // Goggle leather strap
+      ctx.strokeStyle = '#78350f';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.9, 0);
+      ctx.lineTo(r * 0.9, 0);
+      ctx.stroke();
+      // Brass dual lenses
+      [-1, 1].forEach(side => {
+        const lx = side * (r * 0.32);
+        ctx.fillStyle = '#67e8f9';
+        ctx.strokeStyle = '#ca8a04';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(lx, 0, r * 0.22, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        // Glass sheen
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(lx, 0, r * 0.14, -Math.PI / 4, Math.PI / 4);
+        ctx.stroke();
+      });
+      // Side wind wing feathers
+      [-1, 1].forEach(side => {
+        const wx = side * (r * 0.95);
+        ctx.fillStyle = '#a7f3d0';
+        ctx.beginPath();
+        ctx.ellipse(wx, -r * 0.1, r * 0.25, r * 0.09, side * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.restore();
+      break;
+    }
+
+    case 'elem-poison': {
+      // 6. Toxic Gas Mask Respiration Filters & Biohazard Crest
+      ctx.save();
+      // Side canister filters
+      [-1, 1].forEach(side => {
+        ctx.fillStyle = '#334155';
+        ctx.strokeStyle = '#a3e635';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.roundRect(side * (r * 0.82) - 5, r * 0.05, 10, 14, 3);
+        ctx.fill();
+        ctx.stroke();
+      });
+      // Glowing green biohazard forehead badge
+      ctx.fillStyle = '#84cc16';
+      ctx.shadowColor = '#a3e635';
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.arc(0, -r * 0.65, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      break;
+    }
+
+    case 'elem-water': {
+      // 7. Golden Sea-King Trident Crest
+      ctx.save();
+      ctx.translate(0, -r * 0.88);
+      ctx.strokeStyle = '#facc15';
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = '#0284c7';
+      ctx.shadowBlur = 8;
+      // Trident base & middle prong
+      ctx.beginPath();
+      ctx.moveTo(0, r * 0.15);
+      ctx.lineTo(0, -r * 0.45);
+      // Left and right curved prongs
+      ctx.moveTo(-r * 0.28, -r * 0.35);
+      ctx.quadraticCurveTo(-r * 0.28, -r * 0.05, 0, -r * 0.05);
+      ctx.quadraticCurveTo(r * 0.28, -r * 0.05, r * 0.28, -r * 0.35);
+      ctx.stroke();
+      ctx.restore();
+      break;
+    }
+
+    case 'cosmic-gravity': {
+      // 8. Tilted Saturnian Planetary Accretion Ring System
+      ctx.save();
+      ctx.rotate(-Math.PI / 8);
+      ctx.strokeStyle = 'rgba(192, 132, 252, 0.8)';
+      ctx.lineWidth = 3.5;
+      ctx.shadowColor = '#c084fc';
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r * 1.55, r * 0.45, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      // Orbiting stardust motes
+      for (let s = 0; s < 4; s++) {
+        const sa = time * 3 + (s / 4) * Math.PI * 2;
+        ctx.fillStyle = s % 2 === 0 ? '#38bdf8' : '#ffffff';
+        ctx.beginPath();
+        ctx.arc(Math.cos(sa) * (r * 1.55), Math.sin(sa) * (r * 0.45), 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+      break;
+    }
+
+    case 'cosmic-teleport': {
+      // 9. Cyber Holographic HUD Visor & Quantum Warp Rings
+      ctx.save();
+      ctx.translate(0, -r * 0.15);
+      // Visor glass
+      ctx.fillStyle = 'rgba(6, 182, 212, 0.75)';
+      ctx.strokeStyle = '#22d3ee';
+      ctx.lineWidth = 2;
+      ctx.shadowColor = '#06b6d4';
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.roundRect(-r * 0.8, -r * 0.15, r * 1.6, r * 0.3, 6);
+      ctx.fill();
+      ctx.stroke();
+      // Digital scanline
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(-r * 0.6, -r * 0.03, r * 1.2, 1.5);
+      // Dual side quantum portal rings
+      [-1, 1].forEach(side => {
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.arc(side * (r * 0.95), 0, 5, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+      ctx.restore();
+      break;
+    }
+
+    case 'mag-mirrorshield': {
+      // 10. Hexagonal Crystalline Prism Aegis Crown
+      ctx.save();
+      ctx.translate(0, -r * 0.85);
+      ctx.fillStyle = 'rgba(244, 114, 182, 0.85)';
+      ctx.strokeStyle = '#f472b6';
+      ctx.lineWidth = 2;
+      ctx.shadowColor = '#ec4899';
+      ctx.shadowBlur = 14;
+      // Hexagonal crystal crest
+      ctx.beginPath();
+      for (let h = 0; h < 6; h++) {
+        const ha = (h / 6) * Math.PI * 2;
+        const hx = Math.cos(ha) * (r * 0.32);
+        const hy = Math.sin(ha) * (r * 0.32);
+        if (h === 0) ctx.moveTo(hx, hy);
+        else ctx.lineTo(hx, hy);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      // Iridescent diamond facet highlight
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(0, 0, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      break;
+    }
+
+    case 'tech-emp': {
+      // 11. Terminator Cybernetic Red Eye Lens & Antenna Dish
+      ctx.save();
+      // Left cybernetic targeting eye
+      ctx.fillStyle = '#ef4444';
+      ctx.strokeStyle = '#b91c1c';
+      ctx.lineWidth = 1.5;
+      ctx.shadowColor = '#ef4444';
+      ctx.shadowBlur = 14;
+      ctx.beginPath();
+      ctx.arc(-r * 0.35, -r * 0.12, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      // Crosshair lines
+      ctx.strokeStyle = '#fca5a5';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.35 - 9, -r * 0.12);
+      ctx.lineTo(-r * 0.35 + 9, -r * 0.12);
+      ctx.moveTo(-r * 0.35, -r * 0.12 - 9);
+      ctx.lineTo(-r * 0.35, -r * 0.12 + 9);
+      ctx.stroke();
+      // Antenna mast on top right
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(r * 0.3, -r * 0.85);
+      ctx.lineTo(r * 0.45, -r * 1.25);
+      ctx.stroke();
+      ctx.fillStyle = '#38bdf8';
+      ctx.beginPath();
+      ctx.arc(r * 0.45, -r * 1.25, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      break;
+    }
+
+    case 'tech-railgun': {
+      // 12. Armored Steel Combat Plating & Dual Magnetic Accelerator Coils
+      ctx.save();
+      [-1, 1].forEach(side => {
+        // Magnetic accelerator rail barrel
+        ctx.fillStyle = '#334155';
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 1.8;
+        ctx.shadowColor = '#0284c7';
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        ctx.roundRect(side * (r * 0.95) - 6, -r * 0.25, 12, r * 0.5, 3);
+        ctx.fill();
+        ctx.stroke();
+        // Barrel muzzle glow
+        ctx.fillStyle = '#38bdf8';
+        ctx.beginPath();
+        ctx.arc(side * (r * 0.95), -r * 0.25, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      // Center targeting laser lens on top
+      ctx.fillStyle = '#f43f5e';
+      ctx.beginPath();
+      ctx.arc(0, -r * 0.82, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      break;
+    }
+
+    case 'tech-landmines': {
+      // 13. Flashing Red Emergency Beacon & Hazard Warning Stripes
+      ctx.save();
+      // Beacon base
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(-r * 0.22, -r * 0.85, r * 0.44, 4);
+      // Pulsing siren light
+      const isRed = Math.sin(time * 14) > 0;
+      ctx.fillStyle = isRed ? '#ef4444' : '#f97316';
+      ctx.shadowColor = isRed ? '#ef4444' : '#f97316';
+      ctx.shadowBlur = 18;
+      ctx.beginPath();
+      ctx.arc(0, -r * 0.92, 6, 0, Math.PI * 2);
+      ctx.fill();
+      // Hazard diagonal stripe headband
+      ctx.strokeStyle = '#facc15';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.8, -r * 0.5);
+      ctx.lineTo(r * 0.8, -r * 0.5);
+      ctx.stroke();
+      ctx.restore();
+      break;
+    }
+
+    case 'tech-drone': {
+      // 14. Dual Aerodynamic Spinning Drone Rotor Blades
+      ctx.save();
+      ctx.translate(0, -r * 0.9);
+      // Hub
+      ctx.fillStyle = '#475569';
+      ctx.beginPath();
+      ctx.arc(0, 0, 5, 0, Math.PI * 2);
+      ctx.fill();
+      // Spinning propeller blades
+      const propAngle = time * 24;
+      ctx.rotate(propAngle);
+      ctx.fillStyle = 'rgba(203, 213, 225, 0.9)';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r * 0.65, 3.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Navigation lights on tips
+      ctx.fillStyle = '#22c55e';
+      ctx.beginPath();
+      ctx.arc(-r * 0.6, 0, 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath();
+      ctx.arc(r * 0.6, 0, 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      break;
+    }
+
+    case 'chaos-growth': {
+      // 15. Massive Curved Minotaur / Prehistoric Beast Horns
+      ctx.save();
+      ctx.translate(0, -r * 0.6);
+      [-1, 1].forEach(side => {
+        ctx.strokeStyle = '#78350f';
+        ctx.fillStyle = '#fde68a';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(side * (r * 0.4), 0);
+        ctx.quadraticCurveTo(side * (r * 1.1), -r * 0.35, side * (r * 0.85), -r * 0.75);
+        ctx.quadraticCurveTo(side * (r * 0.6), -r * 0.4, side * (r * 0.25), -r * 0.1);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      });
+      // Tribal red warpaint marks
+      ctx.fillStyle = '#dc2626';
+      [-1, 1].forEach(side => {
+        ctx.fillRect(side * (r * 0.55), -r * 0.1, 7, 3);
+        ctx.fillRect(side * (r * 0.52), 2, 5, 3);
+      });
+      ctx.restore();
+      break;
+    }
+
+    case 'meme-dupe': {
+      // 16. Harlequin / Jester Two-Cone Bells Cap
+      ctx.save();
+      ctx.translate(0, -r * 0.82);
+      [-1, 1].forEach((side, idx) => {
+        ctx.fillStyle = idx === 0 ? '#a855f7' : '#ec4899';
+        ctx.strokeStyle = '#581c87';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.quadraticCurveTo(side * (r * 0.6), -r * 0.55, side * (r * 0.75), -r * 0.35);
+        ctx.quadraticCurveTo(side * (r * 0.4), -r * 0.2, side * (r * 0.2), 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        // Golden jingling bell on tip
+        ctx.fillStyle = '#facc15';
+        ctx.beginPath();
+        ctx.arc(side * (r * 0.75), -r * 0.35, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.restore();
+      break;
+    }
+
+    case 'chaos-magnet': {
+      // 17. Classic Horseshoe Magnet with Silver Poles & Gold Coins
+      ctx.save();
+      ctx.translate(0, -r * 0.88);
+      // Red curved horseshoe arch
+      ctx.strokeStyle = '#dc2626';
+      ctx.lineWidth = 7;
+      ctx.lineCap = 'butt';
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.36, Math.PI, 0);
+      ctx.stroke();
+      // Silver pole tips
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 7;
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.36, 0);
+      ctx.lineTo(-r * 0.36, 6);
+      ctx.moveTo(r * 0.36, 0);
+      ctx.lineTo(r * 0.36, 6);
+      ctx.stroke();
+      // Little shiny gold coin stuck to right pole
+      ctx.fillStyle = '#facc15';
+      ctx.strokeStyle = '#b45309';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(r * 0.44, 4, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+      break;
+    }
+
+    case 'meme-speed': {
+      // 18. Aerodynamic Neon GT Racing Spoiler & Speed Wing
+      ctx.save();
+      ctx.translate(0, -r * 0.75);
+      // Spoiler struts
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.45, 0);
+      ctx.lineTo(-r * 0.5, -r * 0.32);
+      ctx.moveTo(r * 0.45, 0);
+      ctx.lineTo(r * 0.5, -r * 0.32);
+      ctx.stroke();
+      // Spoiler main aerofoil wing
+      ctx.fillStyle = '#ef4444';
+      ctx.strokeStyle = '#b91c1c';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.roundRect(-r * 0.75, -r * 0.38, r * 1.5, 6, 2);
+      ctx.fill();
+      ctx.stroke();
+      // Checkered flag stripe across front
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(-r * 0.2, 0, 5, 5);
+      ctx.fillRect(-r * 0.1, 5, 5, 5);
+      ctx.fillRect(0, 0, 5, 5);
+      ctx.fillRect(r * 0.1, 5, 5, 5);
+      ctx.restore();
+      break;
+    }
+
+    case 'meme-anvil': {
+      // 19. Heavy Cartoon Iron Blacksmith Anvil with "100t" Stamp
+      ctx.save();
+      ctx.translate(0, -r * 0.88);
+      ctx.fillStyle = '#334155';
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 2;
+      // Anvil base, waist and horn
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.35, 0);
+      ctx.lineTo(-r * 0.22, -r * 0.15);
+      ctx.lineTo(-r * 0.55, -r * 0.35); // conical horn
+      ctx.lineTo(r * 0.45, -r * 0.35);  // flat face
+      ctx.lineTo(r * 0.22, -r * 0.15);
+      ctx.lineTo(r * 0.35, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      // "100t" steel text stamp
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = 'bold 8px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('100t', 0, -r * 0.16);
+      ctx.restore();
+      break;
+    }
+
+    case 'chaos-tornado': {
+      // 20. Arcade Pinball Bumper Lights & Cyclone Whirl
+      ctx.save();
+      ctx.translate(0, -r * 0.82);
+      // 3 glowing pinball bumper caps
+      const bColors = ['#f43f5e', '#facc15', '#38bdf8'];
+      [-1, 0, 1].forEach((pos, idx) => {
+        const bx = pos * (r * 0.35);
+        ctx.fillStyle = bColors[idx];
+        ctx.shadowColor = bColors[idx];
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.arc(bx, 0, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      // Whirlwind air current
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(0, r * 0.2, r * 0.5, time * 5, time * 5 + Math.PI);
+      ctx.stroke();
+      ctx.restore();
+      break;
+    }
+
+    case 'legend-fisherman': {
+      // 21. Legend Fisherman Bucket Hat, Bamboo Rod, Reel & Hook
+      drawFishermanGear(ctx, r, angle, time);
+      break;
+    }
+
+    default:
+      break;
+  }
+
+  ctx.restore();
 }
 
 /**

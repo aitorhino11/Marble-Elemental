@@ -255,6 +255,48 @@ class SoundSynthesizer {
     osc.stop(now + 0.09);
   }
 
+  // Metallic Heavy Cartoon Anvil "CLAAANK!" Impact Sound
+  playAnvilClank() {
+    if (!this.enabled || this.volume <= 0) return;
+    this.initContext();
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+
+    // Heavy metallic clang fundamental and resonant harmonics
+    const freqs = [380, 760, 1140, 1850, 2400];
+    freqs.forEach((f, idx) => {
+      if (!this.ctx) return;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = idx === 0 ? 'square' : 'sawtooth';
+      osc.frequency.setValueAtTime(f, now);
+      osc.frequency.exponentialRampToValueAtTime(f * 0.92, now + 0.4);
+
+      const amp = (0.4 / (idx + 1)) * this.volume;
+      gain.gain.setValueAtTime(amp, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.45);
+    });
+
+    // Sub-bass thud for cartoon crushing weight
+    const subOsc = this.ctx.createOscillator();
+    const subGain = this.ctx.createGain();
+    subOsc.type = 'sine';
+    subOsc.frequency.setValueAtTime(140, now);
+    subOsc.frequency.exponentialRampToValueAtTime(35, now + 0.25);
+    subGain.gain.setValueAtTime(0.6 * this.volume, now);
+    subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+    subOsc.connect(subGain);
+    subGain.connect(this.ctx.destination);
+    subOsc.start(now);
+    subOsc.stop(now + 0.3);
+  }
+
   playEggCrack() {
     if (!this.enabled) return;
     this.initContext();
@@ -309,6 +351,61 @@ class SoundSynthesizer {
 
       osc.start(now + idx * 0.07);
       osc.stop(now + idx * 0.07 + 0.5);
+    });
+  }
+
+  // Triumphant Battle Start Trumpet Bugle Fanfare ("Tuturututuuuu!")
+  playBattleStartTrumpetFanfare() {
+    if (!this.enabled || this.volume <= 0) return;
+    this.initContext();
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+
+    // "Tu - tu - ru - tu - tuuuuu!"
+    // Notes: G4, G4, C5, E5, G5
+    const notes = [
+      { f: 392.00, start: 0.00, dur: 0.09, vol: 0.35 },
+      { f: 392.00, start: 0.12, dur: 0.09, vol: 0.35 },
+      { f: 523.25, start: 0.23, dur: 0.10, vol: 0.40 },
+      { f: 659.25, start: 0.35, dur: 0.12, vol: 0.45 },
+      { f: 783.99, start: 0.49, dur: 0.65, vol: 0.55 }
+    ];
+
+    notes.forEach(({ f, start, dur, vol }) => {
+      if (!this.ctx) return;
+      const t = now + start;
+
+      // Bright brass timbre (sawtooth + triangle)
+      const osc1 = this.ctx.createOscillator();
+      const osc2 = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      const filter = this.ctx.createBiquadFilter();
+
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(f * 3.5, t);
+      filter.frequency.exponentialRampToValueAtTime(f * 2.0, t + dur);
+
+      osc1.type = 'sawtooth';
+      osc1.frequency.setValueAtTime(f, t);
+
+      osc2.type = 'triangle';
+      osc2.frequency.setValueAtTime(f * 1.002, t);
+
+      const noteVol = vol * this.volume;
+      gain.gain.setValueAtTime(0.001, t);
+      gain.gain.linearRampToValueAtTime(noteVol, t + 0.02);
+      gain.gain.setValueAtTime(noteVol * 0.9, t + dur * 0.7);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+
+      osc1.connect(filter);
+      osc2.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc1.start(t);
+      osc2.start(t);
+      osc1.stop(t + dur + 0.05);
+      osc2.stop(t + dur + 0.05);
     });
   }
 

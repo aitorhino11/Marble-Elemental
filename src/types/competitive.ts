@@ -1,4 +1,4 @@
-import { RarityTier } from './game';
+import { RarityTier, MarblePower } from './game';
 
 export type RankTier = 
   | 'Bronce' 
@@ -46,7 +46,9 @@ export interface BotOpponent {
   id: string;
   name: string;
   powerId: string;
+  power?: MarblePower;
   botElo: number;
+  elo?: number;
   difficultyLabel: string;
   avatarColor: string;
 }

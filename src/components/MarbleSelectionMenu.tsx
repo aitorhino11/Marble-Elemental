@@ -3,6 +3,7 @@ import { MARBLE_POWERS, ELEMENTAL_MATCHUPS, getPowerDisplayName, getRarityTextCl
 import { MAP_THEMES, MapTheme } from '../data/mapsData';
 import { drawUniqueMapDecorations } from '../utils/mapRenderer';
 import { MarbleHoverInspector } from './MarbleHoverInspector';
+import { MarbleSkinThumbnail } from './MarbleSkinThumbnail';
 import { 
   MarblePower, 
   MapSizeType, 
@@ -525,13 +526,7 @@ export const MarbleSelectionMenu: React.FC<MarbleSelectionMenuProps> = ({
                 >
                   {/* Selection Indicator Check */}
                   <div className="flex items-start justify-between">
-                    <div
-                      className="w-8 h-8 rounded-full shadow-inner flex items-center justify-center font-bold text-xs"
-                      style={{
-                        background: `radial-gradient(circle at 35% 30%, #ffffff 0%, ${power.colorHex} 60%, #020617 100%)`,
-                        boxShadow: `0 0 12px ${power.colorHex}70`
-                      }}
-                    />
+                    <MarbleSkinThumbnail power={power} size={42} expression="battle" />
 
                     {isSelected ? (
                       <span className="w-5 h-5 rounded-full bg-amber-400 text-slate-950 flex items-center justify-center text-xs font-bold shadow">

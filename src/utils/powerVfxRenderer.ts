@@ -357,63 +357,94 @@ export function drawSpectacularPowerAnimation(
       break;
     }
 
+    case 'tech-landmines':
     case 'tech-mines': {
-      // 14. Proximity Minefield: 3 glowing hazard mines deployed
-      for (let m = 0; m < 3; m++) {
-        const ma = (m / 3) * Math.PI * 2;
-        const mx = vfx.x + Math.cos(ma) * 60;
-        const my = vfx.y + Math.sin(ma) * 60;
+      // 14. Futuristic Laser Tripwire Minefield: Hexagonal holographic field with laser crosshairs
+      const radius = 30 + progress * 150;
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 4 * alpha;
+      ctx.shadowColor = '#f43f5e';
+      ctx.shadowBlur = 18;
 
-        ctx.fillStyle = '#dc2626';
+      // Hexagonal laser tripwire grid
+      ctx.beginPath();
+      for (let h = 0; h < 6; h++) {
+        const ha = (h / 6) * Math.PI * 2 + progress * 2;
+        const hx = vfx.x + Math.cos(ha) * radius;
+        const hy = vfx.y + Math.sin(ha) * radius;
+        if (h === 0) ctx.moveTo(hx, hy);
+        else ctx.lineTo(hx, hy);
+      }
+      ctx.closePath();
+      ctx.stroke();
+
+      // Pulsing laser tripwires to 3 sub-mines
+      for (let m = 0; m < 3; m++) {
+        const ma = (m / 3) * Math.PI * 2 - progress * 3;
+        const mx = vfx.x + Math.cos(ma) * (radius * 0.7);
+        const my = vfx.y + Math.sin(ma) * (radius * 0.7);
+
+        // Core mine LED
+        ctx.fillStyle = '#ef4444';
         ctx.beginPath();
-        ctx.arc(mx, my, 12, 0, Math.PI * 2);
+        ctx.arc(mx, my, 8, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.strokeStyle = '#fbbf24';
-        ctx.lineWidth = 3 * alpha;
+        // Laser ping
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 2 * alpha;
         ctx.beginPath();
-        ctx.arc(mx, my, 22 * (1 + Math.sin(progress * 10) * 0.2), 0, Math.PI * 2);
+        ctx.moveTo(vfx.x, vfx.y);
+        ctx.lineTo(mx, my);
         ctx.stroke();
       }
       break;
     }
 
     case 'chaos-growth': {
-      // 15. Titan Metamorphosis: Golden celestial starburst aura
-      const radius = 30 + progress * 160;
-      ctx.strokeStyle = '#facc15';
-      ctx.lineWidth = 6 * alpha;
-      ctx.shadowColor = '#eab308';
-      ctx.shadowBlur = 24;
+      // 15. Titan Metamorphosis (+15% Daño Titán): Gigantic emerald-gold shockwave & earthquake rings
+      const radius = 35 + progress * 200;
+      ctx.strokeStyle = '#14b8a6';
+      ctx.lineWidth = 8 * alpha;
+      ctx.shadowColor = '#2dd4bf';
+      ctx.shadowBlur = 28;
 
       ctx.beginPath();
       ctx.arc(vfx.x, vfx.y, radius, 0, Math.PI * 2);
       ctx.stroke();
 
-      // Starburst rays
+      // Secondary golden aura
+      ctx.strokeStyle = '#facc15';
+      ctx.lineWidth = 4 * alpha;
+      ctx.beginPath();
+      ctx.arc(vfx.x, vfx.y, radius * 0.65, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Earth fissures
       for (let r = 0; r < 8; r++) {
         const a = (r / 8) * Math.PI * 2;
         ctx.strokeStyle = '#fef08a';
         ctx.lineWidth = 3 * alpha;
         ctx.beginPath();
         ctx.moveTo(vfx.x, vfx.y);
-        ctx.lineTo(vfx.x + Math.cos(a) * (radius * 1.2), vfx.y + Math.sin(a) * (radius * 1.2));
+        ctx.lineTo(vfx.x + Math.cos(a) * (radius * 1.15), vfx.y + Math.sin(a) * (radius * 1.15));
         ctx.stroke();
       }
       break;
     }
 
+    case 'meme-dupe':
     case 'chaos-clones': {
-      // 16. Shadow Clone Jutsu: Ninja comic smoke puff & illusion clones
+      // 16. Shadow Clone Mitosis: Comic smoke puff & splitting illusion clones
       const radius = 25 + progress * 140;
-      ctx.fillStyle = 'rgba(236, 72, 153, 0.4)';
+      ctx.fillStyle = 'rgba(168, 85, 247, 0.4)';
       ctx.beginPath();
       ctx.arc(vfx.x, vfx.y, radius, 0, Math.PI * 2);
       ctx.fill();
 
       // 2 Phantom ghost clones
       [-40, 40].forEach(offset => {
-        ctx.fillStyle = 'rgba(244, 114, 182, 0.6)';
+        ctx.fillStyle = 'rgba(192, 132, 252, 0.6)';
         ctx.beginPath();
         ctx.arc(vfx.x + offset, vfx.y, vfx.radius * 0.9, 0, Math.PI * 2);
         ctx.fill();
@@ -422,29 +453,45 @@ export function drawSpectacularPowerAnimation(
     }
 
     case 'chaos-magnet': {
-      // 17. Magnetic Vortex: Shimmering gold magnetic flux curves & flying coins
-      const radius = 30 + progress * 150;
+      // 17. Imán Voraz de Monedas: Erupción de monedas giratorias de cobre, plata y oro con destellos!
+      const radius = 30 + progress * 160;
       ctx.strokeStyle = '#eab308';
-      ctx.lineWidth = 4 * alpha;
+      ctx.lineWidth = 5 * alpha;
       ctx.shadowColor = '#fde047';
-      ctx.shadowBlur = 20;
+      ctx.shadowBlur = 24;
 
       ctx.beginPath();
-      ctx.ellipse(vfx.x, vfx.y, radius, radius * 0.5, progress * 4, 0, Math.PI * 2);
+      ctx.ellipse(vfx.x, vfx.y, radius, radius * 0.55, progress * 4, 0, Math.PI * 2);
       ctx.stroke();
 
-      // Flying gold coin sparks
-      for (let c = 0; c < 6; c++) {
-        const ca = (c / 6) * Math.PI * 2 - progress * 5;
-        const cr = radius * (1.0 - progress * 0.8);
-        ctx.fillStyle = '#fef08a';
+      // Flying coins (Copper, Silver, Gold)
+      const coinTypes = [
+        { color: '#d97706', size: 5, border: '#b45309' }, // Cobre
+        { color: '#cbd5e1', size: 7, border: '#94a3b8' }, // Plata
+        { color: '#facc15', size: 9, border: '#ca8a04' }  // Oro
+      ];
+
+      for (let c = 0; c < 9; c++) {
+        const ca = (c / 9) * Math.PI * 2 + progress * 6;
+        const cr = radius * (0.3 + (c % 3) * 0.35);
+        const coin = coinTypes[c % 3];
+        const cx = vfx.x + Math.cos(ca) * cr;
+        const cy = vfx.y + Math.sin(ca) * (cr * 0.6);
+
+        ctx.save();
+        ctx.fillStyle = coin.color;
+        ctx.strokeStyle = coin.border;
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.arc(vfx.x + Math.cos(ca) * cr, vfx.y + Math.sin(ca) * cr, 6 * alpha, 0, Math.PI * 2);
+        ctx.arc(cx, cy, coin.size * alpha, 0, Math.PI * 2);
         ctx.fill();
+        ctx.stroke();
+        ctx.restore();
       }
       break;
     }
 
+    case 'meme-speed':
     case 'chaos-blitz': {
       // 18. Sonic Mach Dash: Hyperdrive supersonic speed streaks & conical boom
       const radius = 25 + progress * 160;
@@ -471,23 +518,31 @@ export function drawSpectacularPowerAnimation(
     }
 
     case 'meme-anvil': {
-      // 19. 100-Ton Cartoon Drop: Massive anvil falling & slamming with CLANG
-      const dropY = Math.min(vfx.y, vfx.y - 160 + progress * 280);
+      // 19. 100-Ton Cartoon Drop: Massive anvil falling & slamming with CLANG!
+      const dropY = Math.min(vfx.y, vfx.y - 180 + progress * 320);
       ctx.fillStyle = '#475569';
-      ctx.fillRect(vfx.x - 30, dropY - 24, 60, 28);
+      ctx.fillRect(vfx.x - 32, dropY - 26, 64, 30);
       ctx.fillStyle = '#1e293b';
-      ctx.fillRect(vfx.x - 42, dropY + 4, 84, 18);
+      ctx.fillRect(vfx.x - 45, dropY + 4, 90, 20);
 
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 12px "Outfit", sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText('100 TONS', vfx.x, dropY - 4);
+
+      // Impact starburst when landing
+      if (progress > 0.4) {
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 4 * alpha;
+        ctx.strokeRect(vfx.x - 55, vfx.y - 10, 110, 30);
+      }
       break;
     }
 
+    case 'chaos-tornado':
     case 'meme-tornado': {
       // 20. Chaos Whirlwind: Cartoon colorful dust devil with flying stars
-      const radius = 25 + progress * 150;
+      const radius = 25 + progress * 160;
       const colors = ['#f43f5e', '#a855f7', '#3b82f6', '#10b981', '#f59e0b'];
       ctx.lineWidth = 4 * alpha;
 
@@ -497,6 +552,35 @@ export function drawSpectacularPowerAnimation(
         ctx.arc(vfx.x, vfx.y, radius * (0.4 + idx * 0.15), progress * 8 + idx, progress * 8 + idx + Math.PI * 1.2);
         ctx.stroke();
       });
+      break;
+    }
+
+    case 'legend-fisherman': {
+      // 21. Master Angler: Whipping curved fishing line, water ripple waves & golden hook
+      const radius = 25 + progress * 180;
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 5 * alpha;
+      ctx.shadowColor = '#0284c7';
+      ctx.shadowBlur = 24;
+
+      // Aquatic wave rings
+      ctx.beginPath();
+      ctx.ellipse(vfx.x, vfx.y, radius, radius * 0.5, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Whipping line
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2.5 * alpha;
+      ctx.beginPath();
+      ctx.moveTo(vfx.x, vfx.y);
+      ctx.quadraticCurveTo(vfx.x + 40, vfx.y - 60, vfx.x + radius * 0.9, vfx.y);
+      ctx.stroke();
+
+      // Hook spark
+      ctx.fillStyle = '#f59e0b';
+      ctx.beginPath();
+      ctx.arc(vfx.x + radius * 0.9, vfx.y, 8 * alpha, 0, Math.PI * 2);
+      ctx.fill();
       break;
     }
 

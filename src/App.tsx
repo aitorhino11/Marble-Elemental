@@ -15,6 +15,7 @@ import { FusionMenuView } from './components/FusionMenuView';
 import { CreatorCodeModal } from './components/CreatorCodeModal';
 import { TikTokClipperModal } from './components/TikTokClipperModal';
 import { SurrenderConfirmModal } from './components/SurrenderConfirmModal';
+import { CompetitiveVsScreen } from './components/CompetitiveVsScreen';
 import { SupportedLanguage, TRANSLATIONS } from './i18n/translations';
 import { BattleMatchConfig, MarbleEntity, MarblePower } from './types/game';
 import { BotOpponent, IncubatorEggSlot } from './types/competitive';
@@ -93,6 +94,12 @@ export default function App() {
   // Creator Code state
   const [isCreatorCodeOpen, setIsCreatorCodeOpen] = useState<boolean>(false);
 
+  // 5-second cinematic VS intro screen for competitive matches
+  const [competitiveVsData, setCompetitiveVsData] = useState<{
+    playerPower: MarblePower;
+    botOpponent: BotOpponent;
+  } | null>(null);
+
   const readyToFuseCount = profile.unlockedMarbleIds.filter(
     (id) => (profile.marbleDuplicates?.[id] || 0) >= 1
   ).length;
@@ -104,6 +111,7 @@ export default function App() {
     setIsCompetitiveMatch(false);
     setPlayerFighterId(null);
     setCompetitiveResult(null);
+    setCompetitiveVsData(null);
     setBattleConfig({
       ...config,
       gameSpeed
@@ -132,6 +140,7 @@ export default function App() {
       gameSpeed
     });
     setWinnerMarble(null);
+    setCompetitiveVsData({ playerPower, botOpponent: botOpponents[0] });
     setCurrentScreen('battle');
   };
 
@@ -453,14 +462,23 @@ export default function App() {
         )}
 
         {currentScreen === 'battle' && (
-          <BattleArenaCanvas
-            config={battleConfig}
-            onVictory={handleVictory}
-            onBackToMenu={handleBackToMenu}
-            onRequestSurrender={() => handleRequestSurrender('competitive')}
-            currentLang={currentLang}
-            isCompetitive={isCompetitiveMatch}
-          />
+          <>
+            <BattleArenaCanvas
+              config={battleConfig}
+              onVictory={handleVictory}
+              onBackToMenu={handleBackToMenu}
+              onRequestSurrender={() => handleRequestSurrender('competitive')}
+              currentLang={currentLang}
+              isCompetitive={isCompetitiveMatch}
+            />
+            {competitiveVsData && (
+              <CompetitiveVsScreen
+                playerPower={competitiveVsData.playerPower}
+                botOpponent={competitiveVsData.botOpponent}
+                onComplete={() => setCompetitiveVsData(null)}
+              />
+            )}
+          </>
         )}
 
         {currentScreen === 'gdd' && (

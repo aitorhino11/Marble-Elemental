@@ -317,13 +317,23 @@ export class CompetitiveManager {
 
   /**
    * Fuse a marble with a duplicate copy to elevate its level by 1!
+   * Level max is 6. Each level grants +5% Attack and +5% HP!
    */
   public fuseMarble(powerId: string): { success: boolean; newLevel: number; error?: string } {
+    const currentLvl = this.profile.marbleLevels[powerId] || 1;
+    if (currentLvl >= 6) {
+      return {
+        success: false,
+        newLevel: 6,
+        error: 'Esta canica ya ha alcanzado el Nivel Máximo de Maestría (Nivel 6).'
+      };
+    }
+
     const availableCopies = this.profile.marbleDuplicates[powerId] || 0;
     if (availableCopies < 1) {
       return { 
         success: false, 
-        newLevel: this.profile.marbleLevels[powerId] || 1, 
+        newLevel: currentLvl, 
         error: 'No tienes copias repetidas de esta canica para fusionar.' 
       };
     }
@@ -331,9 +341,8 @@ export class CompetitiveManager {
     // Deduct 1 duplicate copy
     this.profile.marbleDuplicates[powerId] = availableCopies - 1;
 
-    // Increment level by 1
-    const currentLvl = this.profile.marbleLevels[powerId] || 1;
-    const newLvl = currentLvl + 1;
+    // Increment level by 1 up to max level 6
+    const newLvl = Math.min(6, currentLvl + 1);
     this.profile.marbleLevels[powerId] = newLvl;
 
     this.saveProfile();
@@ -343,6 +352,7 @@ export class CompetitiveManager {
   /**
    * Creator Code Redemption:
    * Supports "aitorhino" (+160 Fragmentos / Tokens)
+   * Supports secret code "lapeseta311" (Huevos y Fragmentos Infinitos)
    */
   public redeemCreatorCode(rawCode: string): { success: boolean; rewardTokens: number; message: string } {
     const cleanCode = rawCode.trim().toLowerCase();
@@ -352,6 +362,33 @@ export class CompetitiveManager {
 
     if (!this.profile.redeemedCodes) {
       this.profile.redeemedCodes = [];
+    }
+
+    // Secret developer code for infinite eggs and tokens!
+    if (cleanCode === 'lapeseta311') {
+      const rewardTokens = 999999;
+      this.profile.eggTokens += rewardTokens;
+      
+      // Add 20 ready-to-hatch infinite eggs (costTokens = 0 so they can hatch instantly!)
+      const eggTiers: RarityTier[] = ['Legendary', 'Legendary', 'Epic', 'Legendary', 'Rare'];
+      for (let idx = 0; idx < 20; idx++) {
+        const rarity = eggTiers[idx % eggTiers.length];
+        this.profile.incubatorEggs.push({
+          id: `secret-egg-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
+          rarity,
+          name: `Huevo Infinito ${rarity === 'Legendary' ? 'Legendario Astral' : rarity === 'Epic' ? 'Épico Divino' : 'Raro'}`,
+          costTokens: 0,
+          unlockedAt: Date.now(),
+          isHatched: false
+        });
+      }
+
+      this.saveProfile();
+      return {
+        success: true,
+        rewardTokens,
+        message: '💎 ¡CÓDIGO SECRETO LAPESETA311 ACTIVADO! Has recibido 20 Huevos Infinitos listos para eclosionar y +999,999 Fragmentos.'
+      };
     }
 
     if (this.profile.redeemedCodes.includes(cleanCode)) {
@@ -410,7 +447,9 @@ export class CompetitiveManager {
       id: `bot-${Date.now()}`,
       name: randomName,
       powerId: randomPower.id,
+      power: randomPower,
       botElo,
+      elo: botElo,
       difficultyLabel: botElo > 2000 ? 'Élite' : botElo > 1200 ? 'Avanzado' : 'Desafiante',
       avatarColor: randomPower.colorHex
     };
