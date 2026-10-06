@@ -143,7 +143,7 @@ export default function App() {
       fighters,
       mapThemeId: randomMap,
       mapSizePercent: 100, // 100% de tamaño de mapa
-      marbleSizePercent: 200, // 200% de tamaño de canica
+      marbleSizePercent: 170, // 170% en competitivo (15% más pequeñas que 200%)
       gameSpeed
     });
     setWinnerMarble(null);
@@ -496,6 +496,7 @@ export default function App() {
               onRequestSurrender={() => handleRequestSurrender('competitive')}
               currentLang={currentLang}
               isCompetitive={isCompetitiveMatch}
+              playerFighterId={playerFighterId}
               isPresentationActive={Boolean(competitiveVsData)}
             />
             {competitiveVsData && (

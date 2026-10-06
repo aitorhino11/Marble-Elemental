@@ -25,7 +25,8 @@ import {
   Hexagon, 
   Octagon,
   AlertTriangle,
-  Users
+  Users,
+  Compass
 } from 'lucide-react';
 
 interface BattleArenaCanvasProps {
@@ -34,6 +35,7 @@ interface BattleArenaCanvasProps {
   onBackToMenu: () => void;
   currentLang: SupportedLanguage;
   isCompetitive?: boolean;
+  playerFighterId?: string | null;
   isPresentationActive?: boolean;
   onRequestSurrender?: () => void;
 }
@@ -44,24 +46,44 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
   onBackToMenu,
   currentLang,
   isCompetitive = false,
+  playerFighterId = null,
   isPresentationActive = false,
   onRequestSurrender
 }) => {
   const t = TRANSLATIONS[currentLang];
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
+  const selectedMap = MAP_THEMES.find(m => m.id === config.mapThemeId) || MAP_THEMES[0];
+  const isComp = Boolean(isCompetitive);
+  const gameMode: BattleGameMode = config.gameMode || 'ffa';
+  const isTeamMode = gameMode === '2v2' || gameMode === '3v3';
+
+  // Player Marble Identifier
+  const isPlayerMarble = useCallback((m: MarbleEntity) => {
+    if (playerFighterId) return m.power.id === playerFighterId && !m.isClone;
+    return m.id.startsWith('marble-0-');
+  }, [playerFighterId]);
+
+  // Directional Launch Aiming Phase (Competitive Mode)
+  const [isAiming, setIsAiming] = useState<boolean>(isComp);
+  const [aimAngle, setAimAngle] = useState<number>(0);
+  const isAimingRef = useRef<boolean>(isComp);
+  const aimAngleRef = useRef<number>(0);
+  const hasLaunchedRef = useRef<boolean>(!isComp);
+  const isDraggingAimRef = useRef<boolean>(false);
+
   const isPresentationActiveRef = useRef(Boolean(isPresentationActive));
   useEffect(() => {
     isPresentationActiveRef.current = Boolean(isPresentationActive);
     if (!isPresentationActive) {
       lastTimeRef.current = performance.now();
+      // When cinematic presentation completes in ranked, activate aiming phase
+      if (isComp && !hasLaunchedRef.current) {
+        isAimingRef.current = true;
+        setIsAiming(true);
+      }
     }
-  }, [isPresentationActive]);
-
-  const selectedMap = MAP_THEMES.find(m => m.id === config.mapThemeId) || MAP_THEMES[0];
-  const isComp = Boolean(isCompetitive);
-  const gameMode: BattleGameMode = config.gameMode || 'ffa';
-  const isTeamMode = gameMode === '2v2' || gameMode === '3v3';
+  }, [isPresentationActive, isComp]);
 
   // Active Arena Shape (circle, square, hexagon, octagon)
   const [arenaShape, setArenaShape] = useState<ArenaShape>(
@@ -69,13 +91,13 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
   );
 
   // REAL SCALING: Map Size and Marble Size based on configuration!
-  // In competitive mode: 100% standard map size, and 200% marble size (2x chunky radius) as requested!
+  // In competitive mode: 100% standard map size, and 170% marble size (15% smaller than the original 200%) as requested!
   const mapScale = isComp ? 1.0 : ((config.mapSizePercent || 100) / 100);
   const arenaWidth = Math.round(Math.max(480, Math.min(1000, 660 * Math.min(1.5, Math.max(0.7, mapScale)))));
   const arenaHeight = Math.round(Math.max(380, Math.min(800, 520 * Math.min(1.5, Math.max(0.7, mapScale)))));
 
-  // Marble Size: 200% (2.0x base radius = 40px) in competitive, or directly scaled by marbleSizePercent in sandbox
-  const marbleScale = isComp ? 2.0 : ((config.marbleSizePercent || 100) / 100);
+  // Marble Size: 170% (1.7x base radius) in competitive (15% smaller than original 200%), or directly scaled in sandbox
+  const marbleScale = isComp ? 1.7 : ((config.marbleSizePercent || 100) / 100);
   const baseRadius = Math.max(12, Math.min(65, Math.round(20 * marbleScale)));
 
   // Refs for real-time physics and entities
@@ -190,7 +212,177 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
 
     marblesRef.current = entities;
     setHudMarbles([...entities]);
-  }, [config, arenaWidth, arenaHeight, baseRadius, currentLang, isTeamMode]);
+
+    if (isComp) {
+      isAimingRef.current = true;
+      setIsAiming(true);
+      hasLaunchedRef.current = false;
+      const playerE = entities.find(isPlayerMarble);
+      const enemyE = entities.find(m => !isPlayerMarble(m));
+      if (playerE && enemyE) {
+        const initA = Math.atan2(enemyE.y - playerE.y, enemyE.x - playerE.x);
+        aimAngleRef.current = initA;
+        setAimAngle(initA);
+      } else if (playerE) {
+        const initA = Math.atan2(cy - playerE.y, cx - playerE.x);
+        aimAngleRef.current = initA;
+        setAimAngle(initA);
+      }
+    } else {
+      isAimingRef.current = false;
+      setIsAiming(false);
+      hasLaunchedRef.current = true;
+    }
+  }, [config, arenaWidth, arenaHeight, baseRadius, currentLang, isTeamMode, isComp, isPlayerMarble]);
+
+  // Reference to trigger marble ability from HUD or keyboard
+  const triggerAbilityRef = useRef<((m: MarbleEntity) => void) | null>(null);
+
+  // Launch Player's Marble into Battle (Aim Phase)
+  const launchPlayerMarble = useCallback((chosenAngle?: number) => {
+    if (!isAimingRef.current && hasLaunchedRef.current) return;
+    const angle = chosenAngle !== undefined ? chosenAngle : aimAngleRef.current;
+
+    const marbles = marblesRef.current;
+    const playerE = marbles.find(isPlayerMarble);
+    if (playerE) {
+      const launchSpeed = 340;
+      playerE.vx = Math.cos(angle) * launchSpeed;
+      playerE.vy = Math.sin(angle) * launchSpeed;
+
+      // Dopamine launch rocket particles burst
+      for (let i = 0; i < 22; i++) {
+        const pAngle = angle + Math.PI + (Math.random() - 0.5) * 1.3;
+        const pSpeed = 60 + Math.random() * 140;
+        particlesRef.current.push({
+          x: playerE.x - Math.cos(angle) * playerE.radius,
+          y: playerE.y - Math.sin(angle) * playerE.radius,
+          vx: Math.cos(pAngle) * pSpeed,
+          vy: Math.sin(pAngle) * pSpeed,
+          color: playerE.color,
+          size: 4 + Math.random() * 3,
+          life: 0,
+          maxLife: 0.8
+        });
+      }
+
+      popupsRef.current.push({
+        id: Math.random().toString(),
+        x: playerE.x,
+        y: playerE.y - 25,
+        text: '🚀 ¡LANZADO!',
+        color: playerE.color,
+        lifetime: 0,
+        scale: 1.6,
+        isCrit: true
+      });
+    }
+
+    soundManager.playHeavyImpact(1.1);
+    soundManager.playPowerTrigger('plasma');
+    traumaRef.current = 0.55;
+
+    isAimingRef.current = false;
+    hasLaunchedRef.current = true;
+    setIsAiming(false);
+  }, [isPlayerMarble]);
+
+  // Manually Trigger Player's Marble Ability (Competitive Mode)
+  const handleTriggerPlayerAbility = useCallback(() => {
+    if (!isComp) return;
+    const playerM = marblesRef.current.find(isPlayerMarble);
+    if (!playerM || !playerM.isAlive || playerM.cooldown > 0) return;
+
+    playerM.cooldown = playerM.maxCooldown;
+    if (triggerAbilityRef.current) {
+      triggerAbilityRef.current(playerM);
+    }
+    soundManager.playHeavyImpact(1.0);
+    traumaRef.current = Math.min(1.0, traumaRef.current + 0.35);
+
+    popupsRef.current.push({
+      id: Math.random().toString(),
+      x: playerM.x,
+      y: playerM.y - 35,
+      text: '⚡ ¡HABILIDAD ACTIVADA!',
+      color: '#facc15',
+      lifetime: 0,
+      scale: 1.8,
+      isCrit: true
+    });
+  }, [isComp, isPlayerMarble]);
+
+  // Spacebar and 'E' key listener for instant launch & ability trigger
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space' || e.key === ' ' || e.key === 'e' || e.key === 'E') {
+        if (isAimingRef.current) {
+          e.preventDefault();
+          launchPlayerMarble();
+        } else if (isComp) {
+          const playerM = marblesRef.current.find(isPlayerMarble);
+          if (playerM && playerM.isAlive && playerM.cooldown <= 0) {
+            e.preventDefault();
+            handleTriggerPlayerAbility();
+          }
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isComp, launchPlayerMarble, handleTriggerPlayerAbility, isPlayerMarble]);
+
+  // Aiming event handlers
+  const updateAimFromCoords = useCallback((clientX: number, clientY: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const mx = (clientX - rect.left) * scaleX;
+    const my = (clientY - rect.top) * scaleY;
+
+    const playerE = marblesRef.current.find(isPlayerMarble);
+    if (playerE) {
+      const angle = Math.atan2(my - playerE.y, mx - playerE.x);
+      aimAngleRef.current = angle;
+      setAimAngle(angle);
+    }
+  }, [isPlayerMarble]);
+
+  const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (isAimingRef.current) {
+      isDraggingAimRef.current = true;
+      updateAimFromCoords(e.clientX, e.clientY);
+    }
+  };
+
+  const handleCanvasMouseUp = () => {
+    if (isAimingRef.current && isDraggingAimRef.current) {
+      isDraggingAimRef.current = false;
+      launchPlayerMarble();
+    }
+  };
+
+  const handleCanvasTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (isAimingRef.current && e.touches[0]) {
+      isDraggingAimRef.current = true;
+      updateAimFromCoords(e.touches[0].clientX, e.touches[0].clientY);
+    }
+  };
+
+  const handleCanvasTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (isAimingRef.current && e.touches[0]) {
+      updateAimFromCoords(e.touches[0].clientX, e.touches[0].clientY);
+    }
+  };
+
+  const handleCanvasTouchEnd = () => {
+    if (isAimingRef.current && isDraggingAimRef.current) {
+      isDraggingAimRef.current = false;
+      launchPlayerMarble();
+    }
+  };
 
   useEffect(() => {
     initBattle();
@@ -336,6 +528,103 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
         return;
       }
 
+      // AIMING PHASE (COMPETITIVE MODE): Player chooses launch direction before match starts!
+      if (isComp && isAimingRef.current) {
+        for (let i = 0; i < marbles.length; i++) {
+          const m = marbles[i];
+          const isPlayer = isPlayerMarble(m);
+          const moveAngle = isPlayer ? aimAngleRef.current : Math.atan2(m.vy, m.vx);
+
+          ctx.save();
+          drawMarbleSkin(ctx, {
+            x: m.x,
+            y: m.y,
+            radius: m.radius,
+            color: m.color,
+            element: m.power.element,
+            powerId: m.power.id,
+            angle: moveAngle,
+            expression: 'battle',
+            shieldActive: false,
+            isClone: false,
+            isShrouded: false,
+            time: totalTime
+          });
+          ctx.restore();
+
+          drawMarbleMiniHpBar(ctx, m);
+
+          if (isPlayer) {
+            // Draw interactive aiming trajectory for player's marble
+            const pColor = m.color;
+            const curA = aimAngleRef.current;
+            const sx = m.x;
+            const sy = m.y;
+
+            ctx.save();
+
+            // Pulsing target halo around marble
+            ctx.strokeStyle = pColor;
+            ctx.lineWidth = 3.5;
+            ctx.shadowColor = pColor;
+            ctx.shadowBlur = 20;
+            ctx.beginPath();
+            ctx.arc(sx, sy, m.radius + 10 + Math.sin(totalTime * 7) * 3, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Laser trajectory line
+            const lineLen = Math.min(arenaRadius * 1.05, 240);
+            const ex = sx + Math.cos(curA) * lineLen;
+            const ey = sy + Math.sin(curA) * lineLen;
+
+            const grad = ctx.createLinearGradient(sx, sy, ex, ey);
+            grad.addColorStop(0, pColor);
+            grad.addColorStop(0.7, '#facc15');
+            grad.addColorStop(1, '#ffffff');
+
+            ctx.strokeStyle = grad;
+            ctx.lineWidth = 4;
+            ctx.setLineDash([10, 8]);
+            ctx.lineDashOffset = -totalTime * 50;
+            ctx.beginPath();
+            ctx.moveTo(sx + Math.cos(curA) * (m.radius + 4), sy + Math.sin(curA) * (m.radius + 4));
+            ctx.lineTo(ex, ey);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Arrowhead at tip
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowColor = '#facc15';
+            ctx.shadowBlur = 20;
+            const headLen = 20;
+            const a1 = curA + Math.PI * 0.82;
+            const a2 = curA - Math.PI * 0.82;
+            ctx.beginPath();
+            ctx.moveTo(ex, ey);
+            ctx.lineTo(ex + Math.cos(a1) * headLen, ey + Math.sin(a1) * headLen);
+            ctx.lineTo(ex + Math.cos(a1) * (headLen * 0.5), ey + Math.sin(a1) * (headLen * 0.5));
+            ctx.lineTo(ex + Math.cos(a2) * (headLen * 0.5), ey + Math.sin(a2) * (headLen * 0.5));
+            ctx.lineTo(ex + Math.cos(a2) * headLen, ey + Math.sin(a2) * headLen);
+            ctx.closePath();
+            ctx.fill();
+
+            // Aim target circle
+            ctx.strokeStyle = '#facc15';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.arc(ex, ey, 14 + Math.sin(totalTime * 8) * 2, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.restore();
+          }
+        }
+
+        ctx.restore(); // Undo screen shake
+        setHudMarbles([...marbles.filter(m => !m.isClone)]);
+        animationFrameRef.current = requestAnimationFrame(gameLoop);
+        return;
+      }
+
       // 3. Update Marbles
       for (let i = marbles.length - 1; i >= 0; i--) {
         const m = marbles[i];
@@ -468,9 +757,17 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
           const cdRate = suddenDeathActive ? dt * 1.6 : dt;
           m.cooldown = Math.max(0, m.cooldown - cdRate);
 
+          const isPlayerControlled = isComp && isPlayerMarble(m);
+
+          if (isPlayerControlled) {
+            // Player in competitive: ability cooldown stops at 0 and waits for manual button/spacebar activation!
+            if (m.cooldown <= 0) {
+              m.cooldown = 0;
+            }
+          }
+
           // REAL DISTINCT POWER ACTIVATION FOR ALL 20 POWERS!
-          if (m.cooldown <= 0) {
-            m.cooldown = m.maxCooldown;
+          const triggerPower = () => {
             soundManager.playPowerTrigger(m.power.element);
             traumaRef.current = Math.min(1.0, traumaRef.current + 0.25);
 
@@ -1055,6 +1352,16 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
                 break;
               }
             }
+          };
+
+          if (isPlayerControlled) {
+            triggerAbilityRef.current = () => {
+              m.cooldown = m.maxCooldown;
+              triggerPower();
+            };
+          } else if (m.cooldown <= 0) {
+            m.cooldown = m.maxCooldown;
+            triggerPower();
           }
         }
 
@@ -1880,6 +2187,10 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
 
   // Handle Mouse Move over Canvas to detect hovered marble and show stats tooltip
   const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (isAimingRef.current) {
+      updateAimFromCoords(e.clientX, e.clientY);
+      return;
+    }
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
@@ -1908,6 +2219,17 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
   const handleCanvasMouseLeave = () => {
     setHoveredInfo(null);
   };
+
+  const playerHudMarble = hudMarbles.find(isPlayerMarble) || null;
+  const isAbilityReady = Boolean(isComp && playerHudMarble && playerHudMarble.isAlive && playerHudMarble.cooldown <= 0);
+
+  const prevAbilityReadyRef = useRef<boolean>(false);
+  useEffect(() => {
+    if (isAbilityReady && !prevAbilityReadyRef.current) {
+      soundManager.playEggHatchFanfare('Rare');
+    }
+    prevAbilityReadyRef.current = isAbilityReady;
+  }, [isAbilityReady]);
 
   return (
     <div className="space-y-3 max-w-7xl mx-auto w-full animate-in fade-in duration-200">
@@ -2063,9 +2385,14 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
           ref={canvasRef}
           width={arenaWidth}
           height={arenaHeight}
+          onMouseDown={handleCanvasMouseDown}
+          onMouseUp={handleCanvasMouseUp}
+          onTouchStart={handleCanvasTouchStart}
+          onTouchMove={handleCanvasTouchMove}
+          onTouchEnd={handleCanvasTouchEnd}
           onMouseMove={handleCanvasMouseMove}
           onMouseLeave={handleCanvasMouseLeave}
-          className="rounded-2xl shadow-inner max-w-full h-auto cursor-crosshair touch-none"
+          className="rounded-2xl shadow-inner max-w-full h-auto cursor-crosshair touch-none select-none"
         />
 
         {/* Hover Tooltip Overlay for Marbles in Canvas or HUD */}
@@ -2161,6 +2488,206 @@ export const BattleArenaCanvas: React.FC<BattleArenaCanvasProps> = ({
           </div>
         )}
       </div>
+
+      {/* AIMING & LAUNCH CONTROL HUD (COMPETITIVE MODE ONLY) */}
+      {isComp && isAiming && !isPresentationActive && (
+        <div className="p-3.5 sm:p-5 rounded-3xl bg-slate-900/95 border-2 border-amber-500/60 shadow-2xl shadow-amber-500/10 backdrop-blur-xl animate-in zoom-in-95 duration-200 space-y-3.5">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/40 animate-pulse">
+                <Compass className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-sm sm:text-base font-black text-white flex items-center gap-2">
+                  <span>ELIGE LA DIRECCIÓN DE LANZAMIENTO</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-mono font-bold border border-amber-500/30">
+                    RANKED
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-300">
+                  Arrastra sobre la arena, usa los botones rápidos o pulsa lanzar cuando estés listo.
+                </p>
+              </div>
+            </div>
+
+            {/* Launch Button */}
+            <button
+              onClick={() => launchPlayerMarble()}
+              className="w-full sm:w-auto px-8 py-3.5 rounded-2xl font-black text-sm sm:text-base bg-gradient-to-r from-emerald-500 via-amber-400 to-amber-500 hover:from-emerald-400 hover:to-amber-300 text-slate-950 shadow-[0_0_35px_rgba(245,158,11,0.55)] border-2 border-yellow-200 transition-all flex items-center justify-center gap-3 cursor-pointer transform hover:scale-105 active:scale-95 animate-pulse"
+            >
+              <span className="tracking-wide">🚀 ¡LANZAR AL COMBATE!</span>
+              <span className="text-[11px] px-2 py-0.5 rounded-md bg-slate-950/20 font-mono font-bold">
+                ESPACIO
+              </span>
+            </button>
+          </div>
+
+          {/* Quick Direction Selector */}
+          <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap pt-2 border-t border-slate-800">
+            <span className="text-[11px] font-bold text-slate-400 uppercase font-mono mr-1">
+              Dirección rápida:
+            </span>
+            <button
+              onClick={() => {
+                soundManager.playMarbleClick(0.6);
+                const marbles = marblesRef.current;
+                const playerE = marbles.find(isPlayerMarble);
+                const enemyE = marbles.find(m => !isPlayerMarble(m));
+                if (playerE && enemyE) {
+                  const angle = Math.atan2(enemyE.y - playerE.y, enemyE.x - playerE.x);
+                  aimAngleRef.current = angle;
+                  setAimAngle(angle);
+                }
+              }}
+              className="px-3.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/50 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer transform active:scale-95"
+            >
+              <Swords className="w-3.5 h-3.5" />
+              <span>Hacia el Rival</span>
+            </button>
+            <button
+              onClick={() => {
+                soundManager.playMarbleClick(0.5);
+                aimAngleRef.current = -Math.PI / 2;
+                setAimAngle(-Math.PI / 2);
+              }}
+              className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 text-xs font-bold transition-colors cursor-pointer"
+            >
+              ⬆️ Norte
+            </button>
+            <button
+              onClick={() => {
+                soundManager.playMarbleClick(0.5);
+                aimAngleRef.current = Math.PI / 2;
+                setAimAngle(Math.PI / 2);
+              }}
+              className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 text-xs font-bold transition-colors cursor-pointer"
+            >
+              ⬇️ Sur
+            </button>
+            <button
+              onClick={() => {
+                soundManager.playMarbleClick(0.5);
+                aimAngleRef.current = Math.PI;
+                setAimAngle(Math.PI);
+              }}
+              className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 text-xs font-bold transition-colors cursor-pointer"
+            >
+              ⬅️ Oeste
+            </button>
+            <button
+              onClick={() => {
+                soundManager.playMarbleClick(0.5);
+                aimAngleRef.current = 0;
+                setAimAngle(0);
+              }}
+              className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 text-xs font-bold transition-colors cursor-pointer"
+            >
+              ➡️ Este
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* COMPETITIVE PLAYER BATTLE DECK: HABILIDAD MANUAL TRIGGER */}
+      {isComp && !isAiming && (
+        <div className="relative z-20 flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 sm:p-4 rounded-3xl bg-slate-900/95 border-2 border-slate-800 shadow-2xl backdrop-blur-xl animate-in fade-in duration-200">
+          {/* Player Marble Telemetry */}
+          <div className="flex items-center gap-3">
+            <div 
+              className="w-12 h-12 rounded-2xl flex items-center justify-center font-black shadow-lg border-2 relative overflow-hidden shrink-0"
+              style={{
+                background: playerHudMarble?.color || '#f59e0b',
+                borderColor: isAbilityReady ? '#facc15' : '#ffffff'
+              }}
+            >
+              <span className="text-white text-base drop-shadow">
+                {playerHudMarble?.power.element.slice(0, 2).toUpperCase() || 'MC'}
+              </span>
+              {isAbilityReady && (
+                <span className="absolute inset-0 bg-amber-400/30 animate-pulse" />
+              )}
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-black text-white">
+                  {playerHudMarble?.name || 'Tu Canica'}
+                </span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/40">
+                  TÚ
+                </span>
+              </div>
+              <div className="flex items-center gap-2.5">
+                {/* Health Bar */}
+                <div className="w-28 sm:w-40 h-2.5 rounded-full bg-slate-950 overflow-hidden border border-slate-800">
+                  <div 
+                    className="h-full rounded-full transition-all duration-150 bg-gradient-to-r from-emerald-500 to-green-400"
+                    style={{ width: `${Math.max(0, Math.min(100, ((playerHudMarble?.hp || 0) / (playerHudMarble?.maxHp || 1)) * 100))}%` }}
+                  />
+                </div>
+                <span className="text-xs font-mono font-bold text-emerald-400">
+                  {Math.round(playerHudMarble?.hp || 0)} HP
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* THE "HABILIDAD" BUTTON */}
+          <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+            {isAbilityReady ? (
+              <button
+                onClick={handleTriggerPlayerAbility}
+                className="w-full sm:w-auto px-7 py-3.5 rounded-2xl font-black text-sm sm:text-base bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 hover:from-amber-300 hover:to-yellow-200 text-slate-950 shadow-[0_0_35px_rgba(245,158,11,0.7)] border-2 border-yellow-100 transition-all flex items-center justify-center gap-3 cursor-pointer transform hover:scale-105 active:scale-95 animate-bounce group"
+                title="¡Pulsa aquí o pulsa ESPACIO para desatar tu habilidad!"
+              >
+                <div className="p-1.5 rounded-xl bg-slate-950 text-amber-400 group-hover:rotate-12 transition-transform shadow-md">
+                  <Zap className="w-5 h-5 fill-amber-400 text-amber-400" />
+                </div>
+                <div className="text-left">
+                  <div className="text-xs sm:text-sm font-black tracking-wider uppercase flex items-center gap-2">
+                    <span>¡HABILIDAD LISTA!</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-950 text-amber-300 font-mono font-bold">
+                      PULSAR
+                    </span>
+                  </div>
+                  <div className="text-[11px] font-bold text-slate-900 opacity-90">
+                    {playerHudMarble?.power.name} (ESPACIO / Clic)
+                  </div>
+                </div>
+                <Sparkles className="w-5 h-5 text-slate-950 animate-spin" />
+              </button>
+            ) : (
+              <div className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-slate-950/80 border border-slate-800 text-slate-400 flex items-center justify-between sm:justify-start gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="relative w-9 h-9 rounded-xl bg-slate-900 flex items-center justify-center border border-slate-800">
+                    <Zap className="w-4 h-4 text-slate-500" />
+                    <div 
+                      className="absolute inset-0 rounded-xl border-2 border-amber-500/30 animate-pulse"
+                      style={{ opacity: 0.6 }}
+                    />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-slate-300 block uppercase tracking-wide">
+                      HABILIDAD: {playerHudMarble?.power.name}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      Cargando energía...
+                    </span>
+                  </div>
+                </div>
+                <div className="text-right pl-3 border-l border-slate-800">
+                  <span className="text-sm font-black font-mono text-amber-400">
+                    {((playerHudMarble?.cooldown || 0)).toFixed(1)}s
+                  </span>
+                  <span className="text-[9px] text-slate-500 block font-mono uppercase">
+                    Recarga
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
